@@ -22,7 +22,6 @@ except:
 # ==========================================
 CORE_SENAI = "#FF0000"
 CORE_TEXTO = "#404040"
-CORE_FUNDO = "#FFFFFF"
 
 st.set_page_config(
     page_title="Portal de Avaliação Excel - SENAI", 
@@ -32,38 +31,16 @@ st.set_page_config(
 
 st.markdown(f"""
     <style>
-        h1 {{
-            color: {CORE_SENAI} !important;
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            font-weight: bold;
-        }}
-        h2, h3 {{
-            color: {CORE_TEXTO} !important;
-        }}
-        .stButton>button {{
-            color: white;
-            background-color: {CORE_TEXTO};
-            border-radius: 5px;
-            border: none;
-        }}
-        .stButton>button:hover {{
-            background-color: {CORE_SENAI};
-            color: white;
-        }}
-        .stDownloadButton>button {{
-            color: white !important;
-            background-color: {CORE_SENAI} !important;
-            border-radius: 5px;
-            font-weight: bold;
-            border: none;
-        }}
-        hr {{
-            border-top: 2px solid {CORE_SENAI};
-        }}
+        h1 {{ color: {CORE_SENAI} !important; font-weight: bold; }}
+        h2, h3 {{ color: {CORE_TEXTO} !important; }}
+        .stButton>button {{ color: white; background-color: {CORE_TEXTO}; border-radius: 5px; }}
+        .stButton>button:hover {{ background-color: {CORE_SENAI}; color: white; }}
+        .stDownloadButton>button {{ color: white !important; background-color: {CORE_SENAI} !important; font-weight: bold; }}
+        hr {{ border-top: 2px solid {CORE_SENAI}; }}
     </style>
 """, unsafe_allow_html=True)
 
-# --- FUNÇÕES DE MOTOR ---
+# --- FUNÇÕES DE MOTOR E CORREÇÃO ---
 def enviar_email(destinatario, assunto, corpo, arquivo_bytes=None, nome_arquivo=None):
     try:
         msg = MIMEMultipart()
@@ -84,116 +61,89 @@ def enviar_email(destinatario, assunto, corpo, arquivo_bytes=None, nome_arquivo=
         server.quit()
         return True
     except Exception as e:
-        st.error(f"Erro técnico no envio: {e}")
+        st.error(f"Erro no envio de e-mail: {e}")
         return False
 
 def gerar_prova_excel(nome_aluno, turma):
-    temas = [
-        {"nome": "Vendas de Tecnologia", "cat": "Hardware", "itens": ["Notebook", "Mouse", "Teclado"]},
-        {"nome": "Gestão de PetShop", "cat": "Serviços", "itens": ["Ração", "Banho", "Tosa"]},
-        {"nome": "Logística de Alimentos", "cat": "Perecíveis", "itens": ["Arroz", "Feijão", "Azeite"]}
-    ]
-    tema = random.choice(temas)
+    itens = ["Notebook", "Mouse", "Teclado", "Monitor", "Impressora"]
     dados = []
-    for i in range(1, 31):
+    for i in range(1, 11): # 10 linhas para teste de correção
+        qtd = random.randint(5, 50)
+        preco = round(random.uniform(20, 100), 2)
         dados.append({
-            "ID": i, 
-            "Data": (datetime.now() - timedelta(days=random.randint(1, 365))).strftime("%d/%m/%Y"),
-            "Produto": random.choice(tema["itens"]), 
-            "Categoria": tema["cat"],
-            "Quantidade": random.randint(5, 100), 
-            "Preço Unitário": round(random.uniform(15, 600), 2), 
-            "Venda Total": 0 
+            "ID": i, "Produto": random.choice(itens),
+            "Quantidade": qtd, "Preço Unitário": preco,
+            "Venda Total": 0, "Status": ""
         })
     df = pd.DataFrame(dados)
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         df.to_excel(writer, sheet_name='Base_de_Dados', index=False)
-        instrucoes = [
-            ["AVALIAÇÃO PRÁTICA DE EXCEL"], [f"ALUNO: {nome_aluno.upper()}"], [f"TURMA: {turma}"],
-            [""], ["1. Calcule a Venda Total (Quantidade x Preço)"], ["2. Crie Status com a função SE"], ["3. Faça uma Tabela Dinâmica em nova aba"]
-        ]
-        pd.DataFrame(instrucoes).to_excel(writer, sheet_name='Instruções', index=False, header=False)
+        inst = [["AVALIAÇÃO EXCEL"], [f"ALUNO: {nome_aluno}"], [f"TURMA: {turma}"], [""],
+                ["1. Coluna Venda Total: Quantidade * Preço Unitário"],
+                ["2. Coluna Status: Se Venda Total >= 500 escrever 'META', senão 'REVISAR'"]]
+        pd.DataFrame(inst).to_excel(writer, sheet_name='Instruções', index=False, header=False)
     return output.getvalue()
 
-# ==========================================
-# INTERFACE DO ALUNO (Visual SENAI)
-# ==========================================
-if 'etapa' not in st.session_state:
-    st.session_state.etapa = 'login'
+def corrigir_prova(arquivo_aluno):
+    try:
+        df = pd.read_excel(arquivo_aluno, sheet_name='Base_de_Dados')
+        pontos_venda = 0
+        pontos_status = 0
+        total_linhas = len(df)
+        for index, row in df.iterrows():
+            if round(row['Venda Total'], 2) == round(row['Quantidade'] * row['Preço Unitário'], 2):
+                pontos_venda += 1
+            esperado = "META" if row['Venda Total'] >= 500 else "REVISAR"
+            if str(row['Status']).strip().upper() == esperado:
+                pontos_status += 1
+        nota = round(((pontos_venda / total_linhas) * 5) + ((pontos_status / total_linhas) * 5), 1)
+        feedback = f"Resultado: {pontos_venda}/{total_linhas} cálculos e {pontos_status}/{total_linhas} funções SE corretas."
+        return nota, feedback
+    except Exception:
+        return 0, "Erro ao ler as colunas. Verifique se usou o arquivo original."
+
+# --- INTERFACE ---
+if 'etapa' not in st.session_state: st.session_state.etapa = 'login'
 
 if st.session_state.etapa == 'login':
-    col_logo, col_titulo = st.columns([1, 4])
-    with col_logo:
-        st.image("https://upload.wikimedia.org/wikipedia/commons/8/8c/SENAI_S%C3%A3o_Paulo_logo.png", width=120)
-    with col_titulo:
+    col_logo, col_tit = st.columns([1, 4])
+    with col_logo: st.image("https://upload.wikimedia.org/wikipedia/commons/8/8c/SENAI_S%C3%A3o_Paulo_logo.png", width=120)
+    with col_tit:
         st.title("Portal de Avaliação Prática")
-        # --- LINHA ATUALIZADA ABAIXO ---
         st.subheader("Cursos de Tecnologia da Informação - Excel Completo")
-        
-    st.write("Identifique-se para baixar sua prova personalizada de Excel.")
     nome = st.text_input("Nome Completo")
     turma = st.text_input("Sua Turma")
-    email = st.text_input("Seu E-mail Corporativo ou Pessoal")
-    
+    email = st.text_input("Seu E-mail")
     if st.button("Acessar Avaliação"):
         if nome and turma and email:
-            with st.spinner('Gerando prova...'):
-                excel_data = gerar_prova_excel(nome, turma)
-                nome_limpo = nome.replace(' ', '_')
-                turma_limpa = turma.replace(' ', '_')
-                st.session_state.nome_arquivo = f"Prova_Excel_{nome_limpo}_{turma_limpa}.xlsx"
-                st.session_state.excel_data = excel_data
-                st.session_state.aluno = {"nome": nome, "turma": turma, "email": email}
-                st.session_state.etapa = 'prova'
-                st.rerun()
-        else:
-            st.error("⚠️ Por favor, preencha todos os campos para continuar.")
-
+            st.session_state.excel_data = gerar_prova_excel(nome, turma)
+            st.session_state.nome_arquivo = f"Prova_{nome.replace(' ','_')}.xlsx"
+            st.session_state.aluno = {"nome": nome, "turma": turma, "email": email}
+            st.session_state.etapa = 'prova'
+            st.rerun()
 else:
-    col_logo, col_titulo = st.columns([1, 4])
-    with col_logo:
-        st.image("https://upload.wikimedia.org/wikipedia/commons/8/8c/SENAI_S%C3%A3o_Paulo_logo.png", width=120)
-    with col_titulo:
-        st.title("Área de Entrega")
-
-    st.header(f"Bem-vindo, {st.session_state.aluno['nome']}")
-    st.write(f"Turma: {st.session_state.aluno['turma']}")
+    col_logo, col_tit = st.columns([1, 4])
+    with col_logo: st.image("https://upload.wikimedia.org/wikipedia/commons/8/8c/SENAI_S%C3%A3o_Paulo_logo.png", width=120)
+    with col_tit: st.title("Área de Entrega e Correção")
     
-    st.warning(f"⚠️ **Importante:** Ao salvar o seu trabalho no computador, use o nome exato: **{st.session_state.nome_arquivo}**")
-    
-    st.download_button("📥 Baixar minha Prova Individual", st.session_state.excel_data, st.session_state.nome_arquivo)
-    
+    st.info(f"Aluno: {st.session_state.aluno['nome']} | Turma: {st.session_state.aluno['turma']}")
+    st.download_button("📥 Baixar minha Prova", st.session_state.excel_data, st.session_state.nome_arquivo)
     st.divider()
     
-    st.subheader("Finalizou a prova? Envie o arquivo aqui:")
-    arquivo_upload = st.file_uploader("Anexe seu arquivo .xlsx resolvido", type=['xlsx'])
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        if st.button("🚀 Enviar Prova Final"):
-            if arquivo_upload:
-                if arquivo_upload.name != st.session_state.nome_arquivo:
-                    st.error(f"❌ **NOME DO ARQUIVO INVÁLIDO!** O sistema só aceita arquivos com o nome: **{st.session_state.nome_arquivo}**")
-                else:
-                    with st.spinner('Processando envio...'):
-                        conteudo_arquivo = arquivo_upload.getvalue()
-                        nome_do_arquivo = arquivo_upload.name
-                        
-                        corpo_prof = f"O aluno {st.session_state.aluno['nome']} (Turma {st.session_state.aluno['turma']}) entregou a prova."
-                        p = enviar_email(EMAIL_PROFESSOR, f"PROVA RECEBIDA (SENAI): {st.session_state.aluno['nome']}", corpo_prof, conteudo_arquivo, nome_do_arquivo)
-                        
-                        corpo_aluno = f"Olá {st.session_state.aluno['nome']}!\n\nConfirmamos o recebimento da sua prova prática de Excel.\nSegue em anexo o arquivo que você enviou como comprovante de entrega.\n\nAtenciosamente,\nProf. Ricardo - SENAI"
-                        enviar_email(st.session_state.aluno['email'], "Comprovante de Entrega - Prova Excel (SENAI)", corpo_aluno, conteudo_arquivo, nome_do_arquivo)
-                        
-                        if p:
-                            st.balloons()
-                            st.success("✅ Prova enviada com sucesso! Você e o professor receberam o arquivo por e-mail.")
-            else:
-                st.error("⚠️ Anexe o arquivo antes de tentar enviar.")
-
-    with col2:
-        if st.button("🚪 Sair do Portal"):
-            st.session_state.clear()
-            st.rerun()
+    arquivo_upload = st.file_uploader("Anexe sua prova resolvida", type=['xlsx'])
+    if st.button("🚀 Enviar e Corrigir Agora"):
+        if arquivo_upload:
+            with st.spinner('Corrigindo...'):
+                nota, feedback = corrigir_prova(arquivo_upload)
+                corpo = f"Aluno: {st.session_state.aluno['nome']}\nNota: {nota}\n{feedback}"
+                enviar_email(EMAIL_PROFESSOR, f"NOTA {nota}: {st.session_state.aluno['nome']}", corpo, arquivo_upload.getvalue(), arquivo_upload.name)
+                enviar_email(st.session_state.aluno['email'], "Seu Resultado - Prova Excel SENAI", corpo)
+                st.success(f"Nota Final: {nota}")
+                st.write(feedback)
+                st.balloons()
+        else:
+            st.error("Anexe o arquivo.")
+    if st.button("🚪 Sair"):
+        st.session_state.clear()
+        st.rerun()
