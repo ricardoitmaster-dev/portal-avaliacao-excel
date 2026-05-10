@@ -32,15 +32,6 @@ st.markdown(f"""
         .stButton>button:hover {{ background-color: {CORE_SENAI}; }}
         .stDownloadButton>button {{ color: white !important; background-color: {CORE_SENAI} !important; font-weight: bold; width: 100%; }}
         .stTextInput input {{ background-color: #262730 !important; color: white !important; }}
-        
-        /* Estilização para centralizar a imagem da assinatura no rodapé */
-        .footer-signature {{
-            display: flex;
-            justify-content: center;
-            margin-top: 50px;
-            padding-top: 20px;
-            border-top: 1px solid #30363d;
-        }}
     </style>
 """, unsafe_allow_html=True)
  
@@ -74,10 +65,8 @@ def gerar_prova_excel(nome_aluno):
     df = pd.DataFrame(dados)
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        # Aba 1: Dados para Processamento
         df.to_excel(writer, sheet_name='Base_de_Dados', index=False)
         
-        # Aba 2: Contexto Inteligente e Instruções Pedagógicas
         inst = [
             ["AVALIAÇÃO PRÁTICA: GESTÃO DE ATIVOS E INDICADORES COMERCIAIS"],
             [""],
@@ -111,7 +100,6 @@ def gerar_prova_excel(nome_aluno):
  
 def calcular_nota(arquivo_bytes):
     try:
-        # Leitura via Pandas para notas de fórmulas
         df = pd.read_excel(arquivo_bytes, sheet_name='Base_de_Dados', engine='openpyxl')
         pv, ps, total = 0, 0, len(df)
         for _, row in df.iterrows():
@@ -120,14 +108,12 @@ def calcular_nota(arquivo_bytes):
             meta = "META" if calc >= 500 else "REVISAR"
             if str(row['Status']).strip().upper() == meta: ps += 1
         
-        # Verificação de Macros via Openpyxl
         try:
             wb = load_workbook(arquivo_bytes, keep_vba=True)
             tem_macro = 2.0 if wb.vba_archive else 0.0
         except:
             tem_macro = 0.0
  
-        # Pesos: Fórmulas (4.0), SE (4.0), Macros (2.0)
         nota_fórmulas = (pv / total) * 4
         nota_se = (ps / total) * 4
         nota = round(nota_fórmulas + nota_se + tem_macro, 1)
@@ -140,8 +126,15 @@ def calcular_nota(arquivo_bytes):
 # --- INTERFACE STREAMLIT ---
 if 'etapa' not in st.session_state: st.session_state.etapa = 'login'
  
-if st.session_state.etapa == 'login':
+# Cabeçalho Assimétrico (SENAI na esquerda, Assinatura na direita)
+col1, col2 = st.columns([1, 1])
+with col1:
     st.image("https://upload.wikimedia.org/wikipedia/commons/8/8c/SENAI_S%C3%A3o_Paulo_logo.png", width=120)
+with col2:
+    # Nome do arquivo exatamente como está no seu GitHub
+    st.image("Imagem para o app avaliação Excel_RicardoItmaster.png", width=200)
+
+if st.session_state.etapa == 'login':
     st.title("Portal de Avaliação Profissional")
     nome = st.text_input("Nome Completo do Aluno")
     turma = st.text_input("Identificação da Turma")
@@ -155,7 +148,6 @@ if st.session_state.etapa == 'login':
             st.session_state.etapa = 'prova'
             st.rerun()
 else:
-    st.image("https://upload.wikimedia.org/wikipedia/commons/8/8c/SENAI_S%C3%A3o_Paulo_logo.png", width=100)
     st.title("Laboratório de Entrega")
     st.write(f"Candidato: **{st.session_state.aluno['nome']}**")
     
@@ -190,9 +182,3 @@ else:
     if st.button("Encerrar Sessão"):
         st.session_state.clear()
         st.rerun()
-
-# --- RODAPÉ COM ASSINATURA ---
-st.markdown("<br><br>", unsafe_allow_html=True)
-st.markdown('<div class="footer-signature">', unsafe_allow_html=True)
-st.image("image_4b30b7.png", width=250)
-st.markdown('</div>', unsafe_allow_html=True)
