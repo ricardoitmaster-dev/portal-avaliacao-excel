@@ -164,12 +164,10 @@ else:
                        st.session_state.nome_esperado)
     
     st.divider()
-    # Alterado para aceitar .xlsm
     arquivo_upload = st.file_uploader("2. Enviar Solução Finalizada (xlsx ou xlsm)", type=['xlsx', 'xlsm'])
     
     if st.button("🚀 3. Submeter para Correção"):
         if arquivo_upload:
-            # Validação aceita .xlsx ou .xlsm mantendo o nome base
             nome_base_esperado = st.session_state.nome_esperado.split('.')[0]
             nome_base_upload = arquivo_upload.name.split('.')[0]
             
@@ -196,5 +194,5 @@ else:
 # --- RODAPÉ COM ASSINATURA ---
 st.markdown("<br><br>", unsafe_allow_html=True)
 st.markdown('<div class="footer-signature">', unsafe_allow_html=True)
-st.image(image_3.png, width=250)
+st.image("image_4b30b7.png", width=250)
 st.markdown('</div>', unsafe_allow_html=True)
