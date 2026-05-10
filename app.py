@@ -17,10 +17,11 @@ except:
     EMAIL_PROFESSOR = "ricardoitmaster@gmail.com"
     SENHA_APP_GOOGLE = "ugjhusmwnbmgzspv"
 
-# --- IDENTIDADE VISUAL ---
+# --- IDENTIDADE VISUAL (VOLTANDO AO MODO ESCURO) ---
 CORE_SENAI = "#FF0000"
-CORE_TEXTO = "#404040"
-CORE_GELO = "#F8F9FA"
+CORE_FUNDO = "#0E1117" # Preto/Grafite profundo
+CORE_TEXTO_BRANCO = "#FFFFFF"
+CORE_TEXTO_CINZA = "#B0B0B0"
 
 st.set_page_config(
     page_title="Portal de Avaliação Excel - SENAI", 
@@ -28,11 +29,11 @@ st.set_page_config(
     layout="centered"
 )
 
-# CSS para forçar Fundo Branco/Gelo e Centralizar Subtitle
+# CSS para forçar Fundo Escuro e Estilização Master
 st.markdown(f"""
     <style>
         .stApp {{
-            background-color: {CORE_GELO} !important;
+            background-color: {CORE_FUNDO} !important;
         }}
         h1 {{ 
             color: {CORE_SENAI} !important; 
@@ -42,16 +43,20 @@ st.markdown(f"""
         }}
         .centered-subtitle {{
             text-align: center !important;
-            color: {CORE_TEXTO} !important;
+            color: {CORE_TEXTO_BRANCO} !important;
             font-size: 1.2rem;
             font-weight: 500;
             margin-bottom: 30px;
         }}
+        label, p, span, .stMarkdown {{
+            color: {CORE_TEXTO_BRANCO} !important;
+        }}
         .stButton>button {{ 
             color: white; 
-            background-color: {CORE_TEXTO}; 
+            background-color: #262730; 
             border-radius: 8px; 
             width: 100%;
+            border: 1px solid {CORE_SENAI};
         }}
         .stButton>button:hover {{ background-color: {CORE_SENAI}; color: white; }}
         .stDownloadButton>button {{ 
@@ -61,6 +66,11 @@ st.markdown(f"""
             width: 100%;
         }}
         hr {{ border-top: 2px solid {CORE_SENAI}; }}
+        /* Ajuste para inputs ficarem legíveis no fundo escuro */
+        .stTextInput input {{
+            background-color: #262730 !important;
+            color: white !important;
+        }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -90,7 +100,7 @@ def enviar_email(destinatario, assunto, corpo, arquivo_bytes=None, nome_arquivo=
 def gerar_prova_excel(nome_aluno, turma):
     itens = ["Notebook", "Mouse", "Teclado", "Monitor", "Impressora", "Cabo HDMI", "SSD 480GB"]
     dados = []
-    # 30 REGISTROS CONFORME SOLICITADO
+    # 30 REGISTROS
     for i in range(1, 31):
         qtd = random.randint(5, 50)
         preco = round(random.uniform(20, 300), 2)
@@ -122,21 +132,18 @@ def gerar_prova_excel(nome_aluno, turma):
 def corrigir_prova(arquivo_aluno):
     try:
         df = pd.read_excel(arquivo_aluno, sheet_name='Base_de_Dados')
-        pontos_venda = 0
-        pontos_status = 0
-        total_linhas = len(df)
+        pv, ps, total = 0, 0, len(df)
         for index, row in df.iterrows():
             if round(row['Venda Total'], 2) == round(row['Quantidade'] * row['Preço Unitário'], 2):
-                pontos_venda += 1
-            esperado = "META" if row['Venda Total'] >= 500 else "REVISAR"
-            if str(row['Status']).strip().upper() == esperado:
-                pontos_status += 1
-        
-        nota = round(((pontos_venda / total_linhas) * 5) + ((pontos_status / total_linhas) * 5), 1)
-        feedback = f"Resultados: {pontos_venda}/{total_linhas} cálculos e {pontos_status}/{total_linhas} funções SE corretas."
+                pv += 1
+            esp = "META" if row['Venda Total'] >= 500 else "REVISAR"
+            if str(row['Status']).strip().upper() == esp:
+                ps += 1
+        nota = round(((pv / total) * 5) + ((ps / total) * 5), 1)
+        feedback = f"Resultados: {pv}/{total} cálculos e {ps}/{total} funções SE corretas."
         return nota, feedback
     except:
-        return 0, "Erro ao processar. Verifique se os nomes das abas e colunas não foram alterados."
+        return 0, "Erro ao processar. Verifique se as abas e colunas originais foram mantidas."
 
 # ==========================================
 # INTERFACE DO USUÁRIO
@@ -174,17 +181,17 @@ else:
     
     if st.button("🚀 Enviar e Obter Resultado"):
         if arquivo_upload:
-            with st.spinner('Aguarde, corrigindo sua prova...'):
+            with st.spinner('Corrigindo prova...'):
                 nota, feedback = corrigir_prova(arquivo_upload)
-                corpo = f"O aluno {st.session_state.aluno['nome']} obteve nota {nota}.\n{feedback}"
+                corpo = f"Aluno: {st.session_state.aluno['nome']}\nNota: {nota}\n{feedback}"
                 enviar_email(EMAIL_PROFESSOR, f"NOTA {nota}: {st.session_state.aluno['nome']}", corpo, arquivo_upload.getvalue(), arquivo_upload.name)
-                enviar_email(st.session_state.aluno['email'], "Resultado Avaliação Excel SENAI", corpo)
+                enviar_email(st.session_state.aluno['email'], "Seu Resultado - Prova Excel SENAI", corpo)
                 
                 st.success(f"Sua nota final é: {nota}")
                 st.info(feedback)
                 st.balloons()
         else:
-            st.error("Por favor, anexe o arquivo antes de enviar.")
+            st.error("Anexe o arquivo antes de enviar.")
             
     if st.button("🚪 Sair"):
         st.session_state.clear()
