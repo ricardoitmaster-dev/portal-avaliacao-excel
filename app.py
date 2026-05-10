@@ -7,6 +7,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
+from openpyxl import load_workbook
 
 # --- CONFIGURAÇÕES DE AMBIENTE ---
 try:
@@ -84,9 +85,15 @@ def gerar_prova_excel(nome_aluno):
             ["   - Se atingir ou superar o critério, o status deve retornar 'META'."],
             ["   - Caso contrário, o sistema deve apontar a necessidade de 'REVISAR'."],
             [""],
+            ["3. AUTOMAÇÃO (MACROS): Para facilitar a operação, a diretoria exige a criação de macros:"],
+            ["   - Crie uma Macro para ORDENAR a tabela pelo campo 'Produto' de A-Z."],
+            ["   - Crie uma Macro para ORDENAR a tabela pelo campo 'Venda Total' do maior para o menor."],
+            ["   - Insira BOTÕES na planilha e atribua as macros correspondentes a eles."],
+            [""],
             ["REGRAS DE INTEGRIDADE:"],
             ["- Não altere a estrutura das colunas ou os nomes das abas."],
-            ["- O arquivo deve ser salvo e enviado sem alteração no nome original gerado pelo portal."],
+            ["- IMPORTANTE: Para que as macros funcionem, salve o arquivo como 'Pasta de Trabalho de Macro do Excel (.xlsm)'."],
+            ["- O portal aceitará tanto o nome original quanto a alteração da extensão para .xlsm."],
             [""],
             ["Bom trabalho!"]
         ]
@@ -95,6 +102,7 @@ def gerar_prova_excel(nome_aluno):
 
 def calcular_nota(arquivo_bytes):
     try:
+        # Leitura via Pandas para notas de fórmulas
         df = pd.read_excel(arquivo_bytes, sheet_name='Base_de_Dados', engine='openpyxl')
         pv, ps, total = 0, 0, len(df)
         for _, row in df.iterrows():
@@ -102,10 +110,23 @@ def calcular_nota(arquivo_bytes):
             if round(float(row['Venda Total']), 2) == calc: pv += 1
             meta = "META" if calc >= 500 else "REVISAR"
             if str(row['Status']).strip().upper() == meta: ps += 1
-        nota = round(((pv / total) * 5) + ((ps / total) * 5), 1)
-        return nota, f"Cálculos: {pv}/{total} | Lógica SE: {ps}/{total}"
+        
+        # Verificação de Macros via Openpyxl
+        try:
+            wb = load_workbook(arquivo_bytes, keep_vba=True)
+            tem_macro = 2.0 if wb.vba_archive else 0.0
+        except:
+            tem_macro = 0.0
+
+        # Pesos: Fórmulas (4.0), SE (4.0), Macros (2.0)
+        nota_fórmulas = (pv / total) * 4
+        nota_se = (ps / total) * 4
+        nota = round(nota_fórmulas + nota_se + tem_macro, 1)
+        
+        feedback_macro = "Macro detectada (+2.0)" if tem_macro > 0 else "Nenhuma Macro detectada (0.0)"
+        return nota, f"Cálculos: {pv}/{total} | Lógica SE: {ps}/{total} | {feedback_macro}"
     except:
-        return 0, "Erro: Certifique-se de preencher a aba 'Base_de_Dados' corretamente."
+        return 0, "Erro: Certifique-se de preencher a aba 'Base_de_Dados' corretamente e salvar o arquivo."
 
 # --- INTERFACE STREAMLIT ---
 if 'etapa' not in st.session_state: st.session_state.etapa = 'login'
@@ -134,14 +155,19 @@ else:
                        st.session_state.nome_esperado)
     
     st.divider()
-    arquivo_upload = st.file_uploader("2. Enviar Solução Finalizada", type=['xlsx'])
+    # Alterado para aceitar .xlsm
+    arquivo_upload = st.file_uploader("2. Enviar Solução Finalizada (xlsx ou xlsm)", type=['xlsx', 'xlsm'])
     
     if st.button("🚀 3. Submeter para Correção"):
         if arquivo_upload:
-            if arquivo_upload.name != st.session_state.nome_esperado:
-                st.error(f"SISTEMA DE SEGURANÇA: Nome do arquivo divergente. Envie o arquivo '{st.session_state.nome_esperado}'.")
+            # Validação aceita .xlsx ou .xlsm mantendo o nome base
+            nome_base_esperado = st.session_state.nome_esperado.split('.')[0]
+            nome_base_upload = arquivo_upload.name.split('.')[0]
+            
+            if nome_base_upload != nome_base_esperado:
+                st.error(f"SISTEMA DE SEGURANÇA: Nome do arquivo divergente. Envie o seu arquivo oficial.")
             else:
-                with st.spinner('Analisando fórmulas e lógica...'):
+                with st.spinner('Analisando fórmulas, lógica e macros...'):
                     nota, feedback = calcular_nota(arquivo_upload)
                     corpo = f"Aluno: {st.session_state.aluno['nome']}\nTurma: {st.session_state.aluno['turma']}\nNota: {nota}\n{feedback}"
                     
