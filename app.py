@@ -8,7 +8,7 @@ from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
 
-# --- CONFIGURAÇÕES ---
+# --- CONFIGURAÇÕES DE AMBIENTE ---
 try:
     EMAIL_PROFESSOR = st.secrets["EMAIL_PROFESSOR"]
     SENHA_APP_GOOGLE = st.secrets["SENHA_APP_GOOGLE"]
@@ -22,7 +22,6 @@ CORE_TEXTO_BRANCO = "#FFFFFF"
 
 st.set_page_config(page_title="Portal de Avaliação Excel - SENAI", layout="centered")
 
-# Estilização Master (Fundo Escuro)
 st.markdown(f"""
     <style>
         .stApp {{ background-color: {CORE_FUNDO} !important; }}
@@ -58,13 +57,24 @@ def enviar_email(destinatario, assunto, corpo, arquivo_bytes=None, nome_arquivo=
         return False
 
 def gerar_prova_excel():
-    itens = ["Notebook", "Mouse", "Teclado", "Monitor", "Impressora", "Cabo HDMI"]
+    itens = ["Notebook", "Mouse", "Teclado", "Monitor", "Impressora", "Cabo HDMI", "SSD 480GB"]
     dados = [{"ID": i, "Produto": random.choice(itens), "Quantidade": random.randint(5, 50), 
               "Preço Unitário": round(random.uniform(20, 300), 2), "Venda Total": 0, "Status": ""} for i in range(1, 31)]
+    
     df = pd.DataFrame(dados)
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        # Aba 1: Base de Dados
         df.to_excel(writer, sheet_name='Base_de_Dados', index=False)
+        
+        # Aba 2: Instruções (Recolocada conforme solicitado)
+        inst = [
+            ["INSTRUÇÕES PARA A AVALIAÇÃO:"],
+            ["1. Coluna Venda Total: Multiplique Quantidade por Preço Unitário."],
+            ["2. Coluna Status: Use a função SE. Se Venda Total >= 500, 'META', caso contrário, 'REVISAR'."],
+            ["3. ATENÇÃO: Não altere o nome deste arquivo, caso contrário o portal não aceitará o envio."]
+        ]
+        pd.DataFrame(inst).to_excel(writer, sheet_name='Instrucoes', index=False, header=False)
     return output.getvalue()
 
 def calcular_nota(arquivo_bytes):
@@ -79,62 +89,54 @@ def calcular_nota(arquivo_bytes):
         nota = round(((pv / total) * 5) + ((ps / total) * 5), 1)
         return nota, f"Cálculos: {pv}/{total} | Lógica SE: {ps}/{total}"
     except:
-        return 0, "Erro na leitura das colunas."
+        return 0, "Erro: Certifique-se de preencher a aba 'Base_de_Dados'."
 
-# --- FLUXO PRINCIPAL ---
-if 'etapa' not in st.session_state:
-    st.session_state.etapa = 'login'
+# --- NAVEGAÇÃO ---
+if 'etapa' not in st.session_state: st.session_state.etapa = 'login'
 
 if st.session_state.etapa == 'login':
     st.image("https://upload.wikimedia.org/wikipedia/commons/8/8c/SENAI_S%C3%A3o_Paulo_logo.png", width=120)
     st.title("Portal de Avaliação")
     nome = st.text_input("Nome Completo")
     turma = st.text_input("Turma")
-    email = st.text_input("Seu E-mail")
+    email = st.text_input("E-mail")
     
-    if st.button("Acessar Avaliação"):
+    if st.button("Acessar Sistema"):
         if nome and turma and email:
             st.session_state.aluno = {"nome": nome, "turma": turma, "email": email}
-            # Criamos o nome do arquivo esperado (TRAVA)
             st.session_state.nome_esperado = f"Avaliacao_{nome.replace(' ','_')}.xlsx"
             st.session_state.excel_data = gerar_prova_excel()
             st.session_state.etapa = 'prova'
             st.rerun()
 else:
     st.image("https://upload.wikimedia.org/wikipedia/commons/8/8c/SENAI_S%C3%A3o_Paulo_logo.png", width=100)
-    st.title("Entrega e Validação")
+    st.title("Entrega da Atividade")
     st.write(f"Aluno: **{st.session_state.aluno['nome']}**")
     
-    # 1. DOWNLOAD
-    st.download_button("📥 1. Baixar Minha Prova", 
+    st.download_button("📥 1. Baixar Prova com Instruções", 
                        st.session_state.excel_data, 
                        st.session_state.nome_esperado)
     
     st.divider()
+    arquivo_upload = st.file_uploader("2. Envie o arquivo resolvido", type=['xlsx'])
     
-    # 2. UPLOAD
-    arquivo_upload = st.file_uploader("2. Envie o arquivo baixado", type=['xlsx'])
-    
-    # 3. VALIDAÇÃO E ENVIO
-    if st.button("🚀 3. Validar e Enviar"):
-        if arquivo_upload is not None:
-            # COMPARAÇÃO DO NOME DO ARQUIVO (A SOLUÇÃO QUE VOCÊ PEDIU)
+    if st.button("🚀 3. Validar e Corrigir"):
+        if arquivo_upload:
             if arquivo_upload.name != st.session_state.nome_esperado:
-                st.error(f"ARQUIVO INCORRETO! Você enviou '{arquivo_upload.name}', mas deve enviar o arquivo gerado para você: '{st.session_state.nome_esperado}'.")
+                st.error(f"NOME DO ARQUIVO INCORRETO! Você enviou '{arquivo_upload.name}', mas o sistema só aceita o seu arquivo oficial: '{st.session_state.nome_esperado}'.")
             else:
-                with st.spinner('Processando...'):
+                with st.spinner('Aguarde...'):
                     nota, feedback = calcular_nota(arquivo_upload)
                     corpo = f"Aluno: {st.session_state.aluno['nome']}\nNota: {nota}\n{feedback}"
                     
-                    # Envia e-mails apenas se o arquivo for o correto
                     enviar_email(EMAIL_PROFESSOR, f"NOTA {nota}: {st.session_state.aluno['nome']}", corpo, arquivo_upload.getvalue(), arquivo_upload.name)
-                    enviar_email(st.session_state.aluno['email'], "Resultado SENAI", corpo)
+                    enviar_email(st.session_state.aluno['email'], "Seu Resultado - SENAI", corpo)
                     
-                    st.success(f"Enviado! Nota: {nota}")
+                    st.success(f"Finalizado! Nota: {nota}")
                     st.info(feedback)
                     st.balloons()
         else:
-            st.warning("Selecione o arquivo primeiro.")
+            st.warning("Selecione o arquivo.")
 
     if st.button("Sair"):
         st.session_state.clear()
