@@ -68,36 +68,39 @@ def gerar_prova_excel(nome_aluno, turma):
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         df.to_excel(writer, sheet_name='Base_de_Dados', index=False)
-        # Aba de validação oculta ou explícita para travar o arquivo
-        inst = [["AVALIAÇÃO OFICIAL SENAI"], ["TOKEN_VALIDACAO: SENAI-PROVA-EXCEL-V3"],
-                ["1. Coluna Venda Total: Quantidade * Preço."],
-                ["2. Coluna Status: SE Venda Total >= 500 'META', senão 'REVISAR'."]]
+        inst = [["AVALIAÇÃO OFICIAL SENAI"], ["VALIDADOR: INTEGRALIDADE-OK"],
+                ["Instruções: Não altere o nome das abas."]]
         pd.DataFrame(inst).to_excel(writer, sheet_name='Instrucoes', index=False, header=False)
     return output.getvalue()
 
 def validar_e_corrigir(arquivo_aluno):
     try:
-        # Tenta ler a aba de Instruções para validar o Token
-        df_val = pd.read_excel(arquivo_aluno, sheet_name='Instrucoes', engine='openpyxl')
-        token = str(df_val.iloc[0, 0]) # Verifica se é o arquivo oficial
+        # Carrega o arquivo verificando as abas existentes
+        xls = pd.ExcelFile(arquivo_aluno, engine='openpyxl')
         
-        if "AVALIAÇÃO OFICIAL SENAI" not in token:
-            return None, "ARQUIVO INVÁLIDO! Você deve enviar exatamente o arquivo que baixou deste portal."
+        # VALIDAÇÃO: Se não tiver a aba de instruções do SENAI, bloqueia na hora
+        if 'Instrucoes' not in xls.sheet_names:
+            return None, "ARQUIVO INVÁLIDO! Use apenas o modelo oficial baixado neste portal."
 
-        df = pd.read_excel(arquivo_aluno, sheet_name='Base_de_Dados', engine='openpyxl')
+        df = pd.read_excel(xls, sheet_name='Base_de_Dados')
         pv, ps, total = 0, 0, len(df)
         
         for _, row in df.iterrows():
-            if round(float(row['Venda Total']), 2) == round(float(row['Quantidade'] * row['Preço Unitário']), 2):
+            # Cálculo de Venda Total
+            venda_aluno = round(float(row['Venda Total']), 2)
+            venda_correta = round(float(row['Quantidade'] * row['Preço Unitário']), 2)
+            if venda_aluno == venda_correta:
                 pv += 1
-            esp = "META" if row['Venda Total'] >= 500 else "REVISAR"
+            
+            # Lógica SE (Meta/Revisar)
+            esp = "META" if venda_aluno >= 500 else "REVISAR"
             if str(row['Status']).strip().upper() == esp:
                 ps += 1
         
         nota = round(((pv / total) * 5) + ((ps / total) * 5), 1)
         return nota, f"Cálculos: {pv}/{total} | Lógica SE: {ps}/{total}"
-    except:
-        return None, "ESTRUTURA INCORRETA! Não altere as abas ou o cabeçalho do arquivo original."
+    except Exception as e:
+        return None, f"ERRO NA ESTRUTURA: Verifique se preencheu as colunas corretamente."
 
 # --- INTERFACE ---
 if 'etapa' not in st.session_state: st.session_state.etapa = 'login'
@@ -128,22 +131,21 @@ else:
     
     if st.button("🚀 3. Enviar para Avaliação"):
         if arquivo_upload:
-            nota, resultado = validar_e_corrigir(arquivo_upload)
-            
-            if nota is not None:
-                # SÓ ENVIA E-MAIL SE O ARQUIVO FOR VÁLIDO E A NOTA GERADA
-                corpo = f"Aluno: {st.session_state.aluno['nome']}\nTurma: {st.session_state.aluno['turma']}\nNota: {nota}\n{resultado}"
-                enviar_email(EMAIL_PROFESSOR, f"NOTA {nota}: {st.session_state.aluno['nome']}", corpo, arquivo_upload.getvalue(), arquivo_upload.name)
-                enviar_email(st.session_state.aluno['email'], "Resultado - SENAI", corpo)
+            with st.spinner('Validando arquivo...'):
+                nota, resultado = validar_e_corrigir(arquivo_upload)
                 
-                st.success(f"Avaliação Concluída! Nota: {nota}")
-                st.info(resultado)
-                st.balloons()
-            else:
-                # BLOQUEIO: Mensagem de erro e não envia e-mail
-                st.error(resultado)
+                if nota is not None:
+                    corpo = f"Aluno: {st.session_state.aluno['nome']}\nTurma: {st.session_state.aluno['turma']}\nNota: {nota}\n{resultado}"
+                    enviar_email(EMAIL_PROFESSOR, f"NOTA {nota}: {st.session_state.aluno['nome']}", corpo, arquivo_upload.getvalue(), arquivo_upload.name)
+                    enviar_email(st.session_state.aluno['email'], "Seu Resultado - Avaliação Excel SENAI", corpo)
+                    
+                    st.success(f"Avaliação Concluída! Nota: {nota}")
+                    st.info(resultado)
+                    st.balloons()
+                else:
+                    st.error(resultado)
         else:
-            st.warning("Por favor, anexe o arquivo da prova.")
+            st.warning("Por favor, anexe o arquivo antes de clicar em enviar.")
 
     if st.button("🚪 Sair"):
         st.session_state.clear()
