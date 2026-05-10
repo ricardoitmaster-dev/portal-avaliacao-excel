@@ -56,7 +56,7 @@ def enviar_email(destinatario, assunto, corpo, arquivo_bytes=None, nome_arquivo=
     except:
         return False
 
-def gerar_prova_excel():
+def gerar_prova_excel(nome_aluno):
     itens = ["Notebook", "Mouse", "Teclado", "Monitor", "Impressora", "Cabo HDMI", "SSD 480GB"]
     dados = [{"ID": i, "Produto": random.choice(itens), "Quantidade": random.randint(5, 50), 
               "Preço Unitário": round(random.uniform(20, 300), 2), "Venda Total": 0, "Status": ""} for i in range(1, 31)]
@@ -64,15 +64,31 @@ def gerar_prova_excel():
     df = pd.DataFrame(dados)
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        # Aba 1: Base de Dados
+        # Aba 1: Dados para Processamento
         df.to_excel(writer, sheet_name='Base_de_Dados', index=False)
         
-        # Aba 2: Instruções (Recolocada conforme solicitado)
+        # Aba 2: Contexto Inteligente e Instruções Pedagógicas
         inst = [
-            ["INSTRUÇÕES PARA A AVALIAÇÃO:"],
-            ["1. Coluna Venda Total: Multiplique Quantidade por Preço Unitário."],
-            ["2. Coluna Status: Use a função SE. Se Venda Total >= 500, 'META', caso contrário, 'REVISAR'."],
-            ["3. ATENÇÃO: Não altere o nome deste arquivo, caso contrário o portal não aceitará o envio."]
+            ["AVALIAÇÃO PRÁTICA: GESTÃO DE ATIVOS E INDICADORES COMERCIAIS"],
+            [""],
+            ["CONTEXTO PROFISSIONAL:"],
+            [f"Prezado(a) {nome_aluno}, você foi designado para automatizar o relatório de vendas de ativos de TI."],
+            ["Sua missão é estruturar os dados para que a diretoria possa identificar a performance de cada item."],
+            [""],
+            ["DESAFIOS TÉCNICOS:"],
+            ["1. CÁLCULO DE FATURAMENTO: Na coluna 'Venda Total', utilize operadores aritméticos para"],
+            ["   determinar o montante total baseado no volume estocado e no valor unitário."],
+            [""],
+            ["2. ANÁLISE DE PERFORMANCE (LÓGICA CONDICIONAL): Na coluna 'Status', você deve criar uma inteligência"],
+            ["   utilizando a função 'SE'. O critério estabelecido pela gerência é de 500 unidades monetárias."],
+            ["   - Se atingir ou superar o critério, o status deve retornar 'META'."],
+            ["   - Caso contrário, o sistema deve apontar a necessidade de 'REVISAR'."],
+            [""],
+            ["REGRAS DE INTEGRIDADE:"],
+            ["- Não altere a estrutura das colunas ou os nomes das abas."],
+            ["- O arquivo deve ser salvo e enviado sem alteração no nome original gerado pelo portal."],
+            [""],
+            ["Bom trabalho!"]
         ]
         pd.DataFrame(inst).to_excel(writer, sheet_name='Instrucoes', index=False, header=False)
     return output.getvalue()
@@ -89,55 +105,55 @@ def calcular_nota(arquivo_bytes):
         nota = round(((pv / total) * 5) + ((ps / total) * 5), 1)
         return nota, f"Cálculos: {pv}/{total} | Lógica SE: {ps}/{total}"
     except:
-        return 0, "Erro: Certifique-se de preencher a aba 'Base_de_Dados'."
+        return 0, "Erro: Certifique-se de preencher a aba 'Base_de_Dados' corretamente."
 
-# --- NAVEGAÇÃO ---
+# --- INTERFACE STREAMLIT ---
 if 'etapa' not in st.session_state: st.session_state.etapa = 'login'
 
 if st.session_state.etapa == 'login':
     st.image("https://upload.wikimedia.org/wikipedia/commons/8/8c/SENAI_S%C3%A3o_Paulo_logo.png", width=120)
-    st.title("Portal de Avaliação")
-    nome = st.text_input("Nome Completo")
-    turma = st.text_input("Turma")
-    email = st.text_input("E-mail")
+    st.title("Portal de Avaliação Profissional")
+    nome = st.text_input("Nome Completo do Aluno")
+    turma = st.text_input("Identificação da Turma")
+    email = st.text_input("E-mail Institucional/Pessoal")
     
-    if st.button("Acessar Sistema"):
+    if st.button("Acessar Ambiente de Prova"):
         if nome and turma and email:
             st.session_state.aluno = {"nome": nome, "turma": turma, "email": email}
             st.session_state.nome_esperado = f"Avaliacao_{nome.replace(' ','_')}.xlsx"
-            st.session_state.excel_data = gerar_prova_excel()
+            st.session_state.excel_data = gerar_prova_excel(nome)
             st.session_state.etapa = 'prova'
             st.rerun()
 else:
     st.image("https://upload.wikimedia.org/wikipedia/commons/8/8c/SENAI_S%C3%A3o_Paulo_logo.png", width=100)
-    st.title("Entrega da Atividade")
-    st.write(f"Aluno: **{st.session_state.aluno['nome']}**")
+    st.title("Laboratório de Entrega")
+    st.write(f"Candidato: **{st.session_state.aluno['nome']}**")
     
-    st.download_button("📥 1. Baixar Prova com Instruções", 
+    st.download_button("📥 1. Baixar Caderno de Questões (Excel)", 
                        st.session_state.excel_data, 
                        st.session_state.nome_esperado)
     
     st.divider()
-    arquivo_upload = st.file_uploader("2. Envie o arquivo resolvido", type=['xlsx'])
+    arquivo_upload = st.file_uploader("2. Enviar Solução Finalizada", type=['xlsx'])
     
-    if st.button("🚀 3. Validar e Corrigir"):
+    if st.button("🚀 3. Submeter para Correção"):
         if arquivo_upload:
             if arquivo_upload.name != st.session_state.nome_esperado:
-                st.error(f"NOME DO ARQUIVO INCORRETO! Você enviou '{arquivo_upload.name}', mas o sistema só aceita o seu arquivo oficial: '{st.session_state.nome_esperado}'.")
+                st.error(f"SISTEMA DE SEGURANÇA: Nome do arquivo divergente. Envie o arquivo '{st.session_state.nome_esperado}'.")
             else:
-                with st.spinner('Aguarde...'):
+                with st.spinner('Analisando fórmulas e lógica...'):
                     nota, feedback = calcular_nota(arquivo_upload)
-                    corpo = f"Aluno: {st.session_state.aluno['nome']}\nNota: {nota}\n{feedback}"
+                    corpo = f"Aluno: {st.session_state.aluno['nome']}\nTurma: {st.session_state.aluno['turma']}\nNota: {nota}\n{feedback}"
                     
-                    enviar_email(EMAIL_PROFESSOR, f"NOTA {nota}: {st.session_state.aluno['nome']}", corpo, arquivo_upload.getvalue(), arquivo_upload.name)
-                    enviar_email(st.session_state.aluno['email'], "Seu Resultado - SENAI", corpo)
+                    enviar_email(EMAIL_PROFESSOR, f"RESULTADO {nota}: {st.session_state.aluno['nome']}", corpo, arquivo_upload.getvalue(), arquivo_upload.name)
+                    enviar_email(st.session_state.aluno['email'], "Confirmação de Entrega - SENAI", corpo)
                     
-                    st.success(f"Finalizado! Nota: {nota}")
+                    st.success(f"Submissão realizada com sucesso! Nota: {nota}")
                     st.info(feedback)
                     st.balloons()
         else:
-            st.warning("Selecione o arquivo.")
+            st.warning("Nenhum arquivo detectado para submissão.")
 
-    if st.button("Sair"):
+    if st.button("Encerrar Sessão"):
         st.session_state.clear()
         st.rerun()
