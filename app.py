@@ -15,37 +15,31 @@ try:
     SENHA_APP_GOOGLE = st.secrets["SENHA_APP_GOOGLE"]
 except:
     EMAIL_PROFESSOR = "ricardoitmaster@gmail.com"
-    SENHA_APP_GOOGLE = "ugjhusmwnbmgzspv" # Mantendo sua senha válida
+    SENHA_APP_GOOGLE = "ugjhusmwnbmgzspv"
 
 # ==========================================
 # CUSTOMIZAÇÃO DE IDENTIDADE VISUAL SENAI
 # ==========================================
-# Baseado no manual de marca do SENAI-SP (Vermelho: #FF0000, Cinza: #404040)
 CORE_SENAI = "#FF0000"
 CORE_TEXTO = "#404040"
 CORE_FUNDO = "#FFFFFF"
 
-# Configuração de Página (Logo e Título na aba)
 st.set_page_config(
     page_title="Portal de Avaliação Excel - SENAI", 
     page_icon="https://upload.wikimedia.org/wikipedia/commons/8/8c/SENAI_S%C3%A3o_Paulo_logo.png",
     layout="centered"
 )
 
-# Estilização CSS para forçar cores SENAI
 st.markdown(f"""
     <style>
-        /* Título Principal */
         h1 {{
             color: {CORE_SENAI} !important;
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
             font-weight: bold;
         }}
-        /* Subtítulos */
         h2, h3 {{
             color: {CORE_TEXTO} !important;
         }}
-        /* Botões Primários (Enviar/Sair) */
         .stButton>button {{
             color: white;
             background-color: {CORE_TEXTO};
@@ -56,7 +50,6 @@ st.markdown(f"""
             background-color: {CORE_SENAI};
             color: white;
         }}
-        /* Botão de Download (Especial) */
         .stDownloadButton>button {{
             color: white !important;
             background-color: {CORE_SENAI} !important;
@@ -64,14 +57,13 @@ st.markdown(f"""
             font-weight: bold;
             border: none;
         }}
-        /* Traço divisor */
         hr {{
             border-top: 2px solid {CORE_SENAI};
         }}
     </style>
 """, unsafe_allow_html=True)
 
-# --- FUNÇÕES DE MOTOR (Sem Alteração) ---
+# --- FUNÇÕES DE MOTOR ---
 def enviar_email(destinatario, assunto, corpo, arquivo_bytes=None, nome_arquivo=None):
     try:
         msg = MIMEMultipart()
@@ -131,13 +123,13 @@ if 'etapa' not in st.session_state:
     st.session_state.etapa = 'login'
 
 if st.session_state.etapa == 'login':
-    # Cabeçalho com o Logo Oficial
     col_logo, col_titulo = st.columns([1, 4])
     with col_logo:
         st.image("https://upload.wikimedia.org/wikipedia/commons/8/8c/SENAI_S%C3%A3o_Paulo_logo.png", width=120)
     with col_titulo:
         st.title("Portal de Avaliação Prática")
-        st.subheader("Cursos de Tecnologia da Informação")
+        # --- LINHA ATUALIZADA ABAIXO ---
+        st.subheader("Cursos de Tecnologia da Informação - Excel Completo")
         
     st.write("Identifique-se para baixar sua prova personalizada de Excel.")
     nome = st.text_input("Nome Completo")
@@ -159,7 +151,6 @@ if st.session_state.etapa == 'login':
             st.error("⚠️ Por favor, preencha todos os campos para continuar.")
 
 else:
-    # Cabeçalho da Área do Aluno
     col_logo, col_titulo = st.columns([1, 4])
     with col_logo:
         st.image("https://upload.wikimedia.org/wikipedia/commons/8/8c/SENAI_S%C3%A3o_Paulo_logo.png", width=120)
@@ -171,7 +162,6 @@ else:
     
     st.warning(f"⚠️ **Importante:** Ao salvar o seu trabalho no computador, use o nome exato: **{st.session_state.nome_arquivo}**")
     
-    # Botão Vermelho SENAI para download
     st.download_button("📥 Baixar minha Prova Individual", st.session_state.excel_data, st.session_state.nome_arquivo)
     
     st.divider()
@@ -191,11 +181,9 @@ else:
                         conteudo_arquivo = arquivo_upload.getvalue()
                         nome_do_arquivo = arquivo_upload.name
                         
-                        # Envio para o Professor
                         corpo_prof = f"O aluno {st.session_state.aluno['nome']} (Turma {st.session_state.aluno['turma']}) entregou a prova."
                         p = enviar_email(EMAIL_PROFESSOR, f"PROVA RECEBIDA (SENAI): {st.session_state.aluno['nome']}", corpo_prof, conteudo_arquivo, nome_do_arquivo)
                         
-                        # Envio de comprovante com anexo para o Aluno
                         corpo_aluno = f"Olá {st.session_state.aluno['nome']}!\n\nConfirmamos o recebimento da sua prova prática de Excel.\nSegue em anexo o arquivo que você enviou como comprovante de entrega.\n\nAtenciosamente,\nProf. Ricardo - SENAI"
                         enviar_email(st.session_state.aluno['email'], "Comprovante de Entrega - Prova Excel (SENAI)", corpo_aluno, conteudo_arquivo, nome_do_arquivo)
                         
