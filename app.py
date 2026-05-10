@@ -8,7 +8,7 @@ from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
 from openpyxl import load_workbook
-
+ 
 # --- CONFIGURAÇÕES DE AMBIENTE ---
 try:
     EMAIL_PROFESSOR = st.secrets["EMAIL_PROFESSOR"]
@@ -16,13 +16,13 @@ try:
 except:
     EMAIL_PROFESSOR = "ricardoitmaster@gmail.com"
     SENHA_APP_GOOGLE = "ugjhusmwnbmgzspv"
-
+ 
 CORE_SENAI = "#FF0000"
 CORE_FUNDO = "#0E1117" 
 CORE_TEXTO_BRANCO = "#FFFFFF"
-
+ 
 st.set_page_config(page_title="Portal de Avaliação Excel - SENAI", layout="centered")
-
+ 
 st.markdown(f"""
     <style>
         .stApp {{ background-color: {CORE_FUNDO} !important; }}
@@ -32,9 +32,18 @@ st.markdown(f"""
         .stButton>button:hover {{ background-color: {CORE_SENAI}; }}
         .stDownloadButton>button {{ color: white !important; background-color: {CORE_SENAI} !important; font-weight: bold; width: 100%; }}
         .stTextInput input {{ background-color: #262730 !important; color: white !important; }}
+        
+        /* Estilização para centralizar a imagem da assinatura no rodapé */
+        .footer-signature {{
+            display: flex;
+            justify-content: center;
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 1px solid #30363d;
+        }}
     </style>
 """, unsafe_allow_html=True)
-
+ 
 def enviar_email(destinatario, assunto, corpo, arquivo_bytes=None, nome_arquivo=None):
     try:
         msg = MIMEMultipart()
@@ -56,7 +65,7 @@ def enviar_email(destinatario, assunto, corpo, arquivo_bytes=None, nome_arquivo=
         return True
     except:
         return False
-
+ 
 def gerar_prova_excel(nome_aluno):
     itens = ["Notebook", "Mouse", "Teclado", "Monitor", "Impressora", "Cabo HDMI", "SSD 480GB"]
     dados = [{"ID": i, "Produto": random.choice(itens), "Quantidade": random.randint(5, 50), 
@@ -99,7 +108,7 @@ def gerar_prova_excel(nome_aluno):
         ]
         pd.DataFrame(inst).to_excel(writer, sheet_name='Instrucoes', index=False, header=False)
     return output.getvalue()
-
+ 
 def calcular_nota(arquivo_bytes):
     try:
         # Leitura via Pandas para notas de fórmulas
@@ -117,7 +126,7 @@ def calcular_nota(arquivo_bytes):
             tem_macro = 2.0 if wb.vba_archive else 0.0
         except:
             tem_macro = 0.0
-
+ 
         # Pesos: Fórmulas (4.0), SE (4.0), Macros (2.0)
         nota_fórmulas = (pv / total) * 4
         nota_se = (ps / total) * 4
@@ -127,10 +136,10 @@ def calcular_nota(arquivo_bytes):
         return nota, f"Cálculos: {pv}/{total} | Lógica SE: {ps}/{total} | {feedback_macro}"
     except:
         return 0, "Erro: Certifique-se de preencher a aba 'Base_de_Dados' corretamente e salvar o arquivo."
-
+ 
 # --- INTERFACE STREAMLIT ---
 if 'etapa' not in st.session_state: st.session_state.etapa = 'login'
-
+ 
 if st.session_state.etapa == 'login':
     st.image("https://upload.wikimedia.org/wikipedia/commons/8/8c/SENAI_S%C3%A3o_Paulo_logo.png", width=120)
     st.title("Portal de Avaliação Profissional")
@@ -183,3 +192,9 @@ else:
     if st.button("Encerrar Sessão"):
         st.session_state.clear()
         st.rerun()
+
+# --- RODAPÉ COM ASSINATURA ---
+st.markdown("<br><br>", unsafe_allow_html=True)
+st.markdown('<div class="footer-signature">', unsafe_allow_html=True)
+st.image(image_3.png, width=250)
+st.markdown('</div>', unsafe_allow_html=True)
