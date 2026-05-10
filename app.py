@@ -20,7 +20,7 @@ except:
 # --- IDENTIDADE VISUAL ---
 CORE_SENAI = "#FF0000"
 CORE_TEXTO = "#404040"
-CORE_GELO = "#F8F9FA"  # Cor de fundo padrão SENAI (clara)
+CORE_GELO = "#F8F9FA"
 
 st.set_page_config(
     page_title="Portal de Avaliação Excel - SENAI", 
@@ -31,7 +31,6 @@ st.set_page_config(
 # CSS para forçar Fundo Branco/Gelo e Centralizar Subtitle
 st.markdown(f"""
     <style>
-        /* Força fundo claro independente do modo do navegador */
         .stApp {{
             background-color: {CORE_GELO} !important;
         }}
@@ -41,7 +40,6 @@ st.markdown(f"""
             text-align: center !important;
             margin-bottom: 5px !important;
         }}
-        /* Estilo para centralizar o curso */
         .centered-subtitle {{
             text-align: center !important;
             color: {CORE_TEXTO} !important;
@@ -92,7 +90,7 @@ def enviar_email(destinatario, assunto, corpo, arquivo_bytes=None, nome_arquivo=
 def gerar_prova_excel(nome_aluno, turma):
     itens = ["Notebook", "Mouse", "Teclado", "Monitor", "Impressora", "Cabo HDMI", "SSD 480GB"]
     dados = []
-    # VOLTANDO PARA 30 REGISTROS
+    # 30 REGISTROS CONFORME SOLICITADO
     for i in range(1, 31):
         qtd = random.randint(5, 50)
         preco = round(random.uniform(20, 300), 2)
@@ -108,7 +106,6 @@ def gerar_prova_excel(nome_aluno, turma):
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         df.to_excel(writer, sheet_name='Base_de_Dados', index=False)
-        # INSTRUÇÕES PEDAGÓGICAS EXPLÍCITAS
         inst = [
             ["AVALIAÇÃO PRÁTICA DE EXCEL"], 
             [f"ALUNO: {nome_aluno}"], 
@@ -129,16 +126,14 @@ def corrigir_prova(arquivo_aluno):
         pontos_status = 0
         total_linhas = len(df)
         for index, row in df.iterrows():
-            # Validação Matemática
             if round(row['Venda Total'], 2) == round(row['Quantidade'] * row['Preço Unitário'], 2):
                 pontos_venda += 1
-            # Validação Lógica SE
             esperado = "META" if row['Venda Total'] >= 500 else "REVISAR"
             if str(row['Status']).strip().upper() == esperado:
                 pontos_status += 1
         
         nota = round(((pontos_venda / total_linhas) * 5) + ((pontos_status / total_linhas) * 5), 1)
-        feedback = f"Resultados: {pontos_venda}/{total_linhas} cálculos de multiplicação e {pontos_status}/{total_linhas} funções SE corretas."
+        feedback = f"Resultados: {pontos_venda}/{total_linhas} cálculos e {pontos_status}/{total_linhas} funções SE corretas."
         return nota, feedback
     except:
         return 0, "Erro ao processar. Verifique se os nomes das abas e colunas não foram alterados."
@@ -149,10 +144,8 @@ def corrigir_prova(arquivo_aluno):
 if 'etapa' not in st.session_state: st.session_state.etapa = 'login'
 
 if st.session_state.etapa == 'login':
-    # Centralização do Header
     st.image("https://upload.wikimedia.org/wikipedia/commons/8/8c/SENAI_S%C3%A3o_Paulo_logo.png", width=120)
     st.title("Portal de Avaliação Prática")
-    # SUBHEADER CENTRALIZADO VIA HTML
     st.markdown('<p class="centered-subtitle">Cursos de Tecnologia da Informação - Excel Completo</p>', unsafe_allow_html=True)
     
     nome = st.text_input("Nome Completo")
@@ -196,5 +189,3 @@ else:
     if st.button("🚪 Sair"):
         st.session_state.clear()
         st.rerun()
-
-Seu portal agora está blindado contra o modo noturno e pedagogicamente mais robusto. Fico à disposição para qualquer outro ajuste!
