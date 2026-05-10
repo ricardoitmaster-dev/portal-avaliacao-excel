@@ -23,6 +23,7 @@ CORE_TEXTO_BRANCO = "#FFFFFF"
  
 st.set_page_config(page_title="Portal de Avaliação Excel - SENAI", layout="centered")
  
+# --- ESTILIZAÇÃO CSS AVANÇADA ---
 st.markdown(f"""
     <style>
         .stApp {{ background-color: {CORE_FUNDO} !important; }}
@@ -32,6 +33,11 @@ st.markdown(f"""
         .stButton>button:hover {{ background-color: {CORE_SENAI}; }}
         .stDownloadButton>button {{ color: white !important; background-color: {CORE_SENAI} !important; font-weight: bold; width: 100%; }}
         .stTextInput input {{ background-color: #262730 !important; color: white !important; }}
+        
+        /* Alinhamento vertical central para as colunas do cabeçalho */
+        [data-testid="stHorizontalBlock"] {{
+            align-items: center;
+        }}
     </style>
 """, unsafe_allow_html=True)
  
@@ -126,13 +132,17 @@ def calcular_nota(arquivo_bytes):
 # --- INTERFACE STREAMLIT ---
 if 'etapa' not in st.session_state: st.session_state.etapa = 'login'
  
-# Cabeçalho Assimétrico (SENAI na esquerda, Assinatura na direita)
-col1, col2 = st.columns([1, 1])
-with col1:
+# CABEÇALHO ASSIMÉTRICO E ALINHADO
+col_logo, col_espaco, col_assinatura = st.columns([1, 1, 1])
+
+with col_logo:
     st.image("https://upload.wikimedia.org/wikipedia/commons/8/8c/SENAI_S%C3%A3o_Paulo_logo.png", width=120)
-with col2:
-    # Nome do arquivo exatamente como está no seu GitHub
-    st.image("Imagem para o app avaliação Excel_RicardoItmaster.png", width=200)
+
+with col_assinatura:
+    # Alinhando a imagem da assinatura totalmente à direita
+    st.markdown('<div style="display: flex; justify-content: flex-end;">', unsafe_allow_html=True)
+    st.image("Imagem para o app avaliação Excel_RicardoItmaster.png", width=220)
+    st.markdown('</div>', unsafe_allow_html=True)
 
 if st.session_state.etapa == 'login':
     st.title("Portal de Avaliação Profissional")
