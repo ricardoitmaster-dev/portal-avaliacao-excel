@@ -3,7 +3,6 @@ import pandas as pd
 import random
 import io
 import smtplib
-import base64
 import os
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -25,7 +24,7 @@ CORE_TEXTO_BRANCO = "#FFFFFF"
 
 st.set_page_config(page_title="Portal de Avaliação Excel - SENAI", layout="centered")
 
-# --- ESTILIZAÇÃO CSS ---
+# --- ESTILIZAÇÃO CSS AVANÇADA (Íntegra do Original) ---
 st.markdown(f"""
     <style>
         .stApp {{ background-color: {CORE_FUNDO} !important; }}
@@ -39,16 +38,23 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# --- FUNÇÕES CORE ---
+# --- FUNÇÃO DE FEEDBACK DIDÁTICO (Íntegra do Original) ---
 def gerar_feedback_pedagogico():
     return """
 --------------------------------------------------
 🎓 GUIA DE CORREÇÃO E BOAS PRÁTICAS (SENAI)
 --------------------------------------------------
-1. CÁLCULO DE FATURAMENTO: =C2*D2
-2. LÓGICA CONDICIONAL: =SE(E2>=500;"META";"REVISAR")
-3. FORMATAÇÃO: Contábil, bordas e negrito.
-4. MACROS: Salvar como .XLSM.
+1. CÁLCULO DE FATURAMENTO:
+   - A fórmula correta para a 'Venda Total' é: =C2*D2
+   
+2. LÓGICA CONDICIONAL (Função SE):
+   - A fórmula esperada é: =SE(E2>=500;"META";"REVISAR")
+   
+3. FORMATAÇÃO E APRESENTAÇÃO PROFISSIONAL:
+   - MOEDA: Formate valores financeiros como 'Contábil' (R$).
+   - ESTÉTICA: Use bordas, negrito nos cabeçalhos e cores sóbrias.
+   - ALINHAMENTO: Centralize IDs e Quantidades para melhor leitura.
+   - MACROS: O arquivo deve ser salvo como .XLSM para manter a automação.
 --------------------------------------------------
 """
 
@@ -81,7 +87,33 @@ def gerar_prova_excel(nome_aluno):
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         df.to_excel(writer, sheet_name='Base_de_Dados', index=False)
-        inst = [["AVALIAÇÃO EXCEL"], [f"Aluno: {nome_aluno}"], ["Calculos e Macros"]]
+        inst = [
+            ["AVALIAÇÃO PRÁTICA: GESTÃO DE ATIVOS E INDICADORES COMERCIAIS"],
+            [""],
+            ["CONTEXTO PROFISSIONAL:"],
+            [f"Prezado(a) {nome_aluno}, você foi designado para automatizar o relatório de vendas de ativos de TI."],
+            ["Sua missão é estruturar os dados para que a diretoria possa identificar a performance de cada item."],
+            [""],
+            ["DESAFIOS TÉCNICOS:"],
+            ["1. CÁLCULO DE FATURAMENTO: Na coluna 'Venda Total', utilize operadores aritméticos para"],
+            ["   determinar o montante total baseado no volume estocado e no valor unitário."],
+            [""],
+            ["2. ANÁLISE DE PERFORMANCE (LÓGICA CONDICIONAL): Na coluna 'Status', você deve criar uma inteligência"],
+            ["   utilizando a função 'SE'. O critério estabelecido pela gerência é de 500 unidades monetárias."],
+            ["   - Se atingir ou superar o critério, o status deve retornar 'META'."],
+            ["   - Caso contrário, o sistema deve apontar a necessidade de 'REVISAR'."],
+            [""],
+            ["3. AUTOMAÇÃO (MACROS): Para facilitar a operação, a diretoria exige a criação de macros:"],
+            ["   - Crie uma Macro para ORDENAR a tabela pelo campo 'Produto' de A-Z."],
+            ["   - Crie uma Macro para ORDENAR a tabela pelo campo 'Venda Total' do maior para o menor."],
+            ["   - Insira BOTÕES na planilha e atribua as macros correspondentes a eles."],
+            [""],
+            ["REGRAS DE INTEGRIDADE:"],
+            ["- Não altere a estrutura das colunas ou os nomes das abas."],
+            ["- IMPORTANTE: Para que as macros funcionem, salve o arquivo como .xlsm."],
+            [""],
+            ["Bom trabalho!"]
+        ]
         pd.DataFrame(inst).to_excel(writer, sheet_name='Instrucoes', index=False, header=False)
     return output.getvalue()
 
@@ -99,14 +131,16 @@ def calcular_nota(arquivo_bytes):
             tem_macro = 2.0 if wb.vba_archive else 0.0
         except: tem_macro = 0.0
         nota = round(((pv / total) * 4) + ((ps / total) * 4) + tem_macro, 1)
-        return nota, f"Cálculos: {pv}/{total} | Lógica: {ps}/{total}"
-    except: return 0, "Erro de leitura."
+        feedback_macro = "Macro detectada (+2.0)" if tem_macro > 0 else "Nenhuma Macro detectada (0.0)"
+        return nota, f"Cálculos: {pv}/{total} | Lógica SE: {ps}/{total} | {feedback_macro}"
+    except: return 0, "Erro: Certifique-se de preencher a aba 'Base_de_Dados' corretamente."
 
-# --- INTERFACE ---
+# --- INTERFACE ALUNO ---
 if 'etapa' not in st.session_state: st.session_state.etapa = 'login'
 
 col_logo, col_espaco, col_assinatura = st.columns([1, 1, 1])
-with col_logo: st.image("https://upload.wikimedia.org/wikipedia/commons/8/8c/SENAI_S%C3%A3o_Paulo_logo.png", width=120)
+with col_logo:
+    st.image("https://upload.wikimedia.org/wikipedia/commons/8/8c/SENAI_S%C3%A3o_Paulo_logo.png", width=120)
 with col_assinatura:
     st.markdown('<div style="display: flex; justify-content: flex-end;">', unsafe_allow_html=True)
     st.image("Imagem para o app avaliação Excel_RicardoItmaster.png", width=220)
@@ -114,91 +148,96 @@ with col_assinatura:
 
 if st.session_state.etapa == 'login':
     st.title("Portal de Avaliação Profissional")
-    nome = st.text_input("Nome Aluno", key="al_nome")
-    turma = st.text_input("Turma", key="al_turma").strip().upper()
-    email = st.text_input("E-mail", key="al_email")
-    if st.button("Acessar Prova"):
+    nome = st.text_input("Nome Completo do Aluno")
+    turma = st.text_input("Identificação da Turma").strip().upper()
+    email = st.text_input("E-mail Institucional/Pessoal")
+    if st.button("Acessar Ambiente de Prova"):
         if nome and turma and email:
             st.session_state.aluno = {"nome": nome, "turma": turma, "email": email}
-            st.session_state.nome_esp = f"Avaliacao_{nome.replace(' ','_')}.xlsx"
+            st.session_state.nome_esperado = f"Avaliacao_{nome.replace(' ','_')}.xlsx"
             st.session_state.excel_data = gerar_prova_excel(nome)
             st.session_state.etapa = 'prova'
             st.rerun()
 else:
     st.title("Laboratório de Entrega")
-    st.write(f"Candidato: **{st.session_state.aluno['nome']}**")
-    st.download_button("Baixar Prova", st.session_state.excel_data, st.session_state.nome_esp)
+    st.write(f"Candidato: **{st.session_state.aluno['nome']}** | Turma: **{st.session_state.aluno['turma']}**")
+    st.download_button("📥 1. Baixar Caderno de Questões", st.session_state.excel_data, st.session_state.nome_esperado)
     st.divider()
-    up = st.file_uploader("Enviar Solução", type=['xlsx', 'xlsm'])
-    if st.button("🚀 Submeter"):
-        if up:
-            nota, feed = calcular_nota(up)
-            pd.DataFrame([[st.session_state.aluno['nome'], st.session_state.aluno['turma'], nota]], columns=['Aluno', 'Turma', 'Nota']).to_csv("db_notas.csv", mode='a', header=not os.path.exists("db_notas.csv"), index=False)
-            st.success(f"Enviado! Nota: {nota}")
-    if st.button("Encerrar Sessão Aluno"):
+    arquivo_upload = st.file_uploader("2. Enviar Solução Finalizada", type=['xlsx', 'xlsm'])
+    if st.button("🚀 3. Submeter para Correção"):
+        if arquivo_upload:
+            if arquivo_upload.name.split('.')[0] != st.session_state.nome_esperado.split('.')[0]:
+                st.error("SISTEMA DE SEGURANÇA: Nome do arquivo divergente.")
+            else:
+                nota, feedback = calcular_nota(arquivo_upload)
+                tutorial = gerar_feedback_pedagogico()
+                pd.DataFrame([[st.session_state.aluno['nome'], st.session_state.aluno['turma'], nota]], columns=['Aluno', 'Turma', 'Nota']).to_csv("db_notas.csv", mode='a', header=not os.path.exists("db_notas.csv"), index=False)
+                corpo = f"Aluno: {st.session_state.aluno['nome']}\nNota: {nota}\n{feedback}\n\n{tutorial}"
+                enviar_email(EMAIL_PROFESSOR, f"RESULTADO {nota}: {st.session_state.aluno['nome']}", corpo, arquivo_upload.getvalue(), arquivo_upload.name)
+                st.success(f"Submissão realizada! Nota: {nota}")
+                st.balloons()
+    if st.button("Sair / Trocar Aluno"):
         st.session_state.clear()
         st.rerun()
 
-# --- PAINEL GESTÃO ---
+# --- PAINEL GESTÃO (DOCENTE E ADM) ---
 st.divider()
-with st.expander("👤 PAINEL ADMINISTRATIVO E DOCENTE"):
-    tabs = st.tabs(["Acesso Professor", "Novo Cadastro", "Gerência ADM"])
-
-    with tabs[1]: # NOVO CADASTRO
-        st.subheader("Cadastro de Docente")
-        nc_nome = st.text_input("Nome", key="nc_n")
-        nc_turma = st.text_input("Turma", key="nc_t").strip().upper()
-        nc_pass = st.text_input("Senha", type="password", key="nc_p")
-        if st.button("Salvar Novo Professor"):
-            if nc_nome and nc_turma and nc_pass:
-                if os.path.exists("professores.csv"):
-                    df_check = pd.read_csv("professores.csv")
-                    if not df_check[(df_check['Prof'] == nc_nome) & (df_check['Turma'] == nc_turma)].empty:
-                        st.error("ERRO: Este professor já está cadastrado nesta turma!")
-                    else:
-                        pd.DataFrame([[nc_nome, nc_turma, nc_pass]], columns=['Prof', 'Turma', 'Senha']).to_csv("professores.csv", mode='a', header=not os.path.exists("professores.csv"), index=False)
-                        st.success("Cadastrado com sucesso! Limpando dados...")
-                        st.rerun()
-                else:
-                    pd.DataFrame([[nc_nome, nc_turma, nc_pass]], columns=['Prof', 'Turma', 'Senha']).to_csv("professores.csv", mode='a', header=not os.path.exists("professores.csv"), index=False)
-                    st.rerun()
-
-    with tabs[0]: # ACESSO PROFESSOR
+with st.expander("👤 PAINEL DE CONTROLE (Professores / ADM)"):
+    aba_g = st.tabs(["Acesso Professor", "Novo Cadastro Professor", "Painel ADM"])
+    
+    # 1. ACESSO PROFESSOR
+    with aba_g[0]:
         st.subheader("Login Professor")
-        lp_turma = st.text_input("Turma", key="lp_t").strip().upper()
-        lp_pass = st.text_input("Senha", type="password", key="lp_p")
-        if lp_pass:
+        lp_t = st.text_input("Turma para Consulta", key="lp_t").strip().upper()
+        lp_p = st.text_input("Senha Docente", type="password", key="lp_p")
+        if lp_p:
             if os.path.exists("professores.csv"):
                 df_p = pd.read_csv("professores.csv")
-                if not df_p[(df_p['Turma'] == lp_turma) & (df_p['Senha'] == str(lp_pass))].empty:
-                    st.success(f"Sessão Ativa: Turma {lp_turma}")
+                if not df_p[(df_p['Turma'] == lp_t) & (df_p['Senha'] == str(lp_p))].empty:
+                    st.success(f"Acesso liberado: Turma {lp_t}")
                     if os.path.exists("db_notas.csv"):
                         res = pd.read_csv("db_notas.csv")
-                        st.dataframe(res[res['Turma'] == lp_turma], use_container_width=True)
-                    if st.button("🔐 Fechar e Limpar Sessão Professor"):
+                        st.dataframe(res[res['Turma'] == lp_t], use_container_width=True)
+                    if st.button("🔐 Encerrar e Limpar Sessão Professor"):
                         st.rerun()
-                else: st.error("Acesso negado.")
+                else: st.error("Dados inválidos.")
 
-    with tabs[2]: # GERÊNCIA ADM
-        st.subheader("Área Estratégica (ADM)")
-        # Possibilidade de trocar a senha ADM via segredo ou hardcode
-        SENHA_ADM_ATUAL = "Celina2610$$"
-        adm_pass = st.text_input("Senha Mestra", type="password", key="adm_p")
-        
-        if adm_pass == SENHA_ADM_ATUAL:
-            st.success("Acesso ADM Confirmado")
+    # 2. NOVO CADASTRO PROFESSOR
+    with aba_g[1]:
+        st.subheader("Registrar Novo Professor")
+        nc_n = st.text_input("Nome Docente", key="nc_n")
+        nc_t = st.text_input("Turma Docente", key="nc_t").strip().upper()
+        nc_s = st.text_input("Definir Senha", type="password", key="nc_s")
+        if st.button("Confirmar Cadastro"):
+            if nc_n and nc_t and nc_s:
+                if os.path.exists("professores.csv"):
+                    df_check = pd.read_csv("professores.csv")
+                    if not df_check[(df_check['Prof'] == nc_n) & (df_check['Turma'] == nc_t)].empty:
+                        st.warning("Este professor já está vinculado a esta turma.")
+                    else:
+                        pd.DataFrame([[nc_n, nc_t, nc_s]], columns=['Prof', 'Turma', 'Senha']).to_csv("professores.csv", mode='a', header=False, index=False)
+                        st.success("Cadastrado! Limpando tela...")
+                        st.rerun()
+                else:
+                    pd.DataFrame([[nc_n, nc_t, nc_s]], columns=['Prof', 'Turma', 'Senha']).to_csv("professores.csv", index=False)
+                    st.rerun()
+
+    # 3. PAINEL ADM (Senha Master)
+    with aba_g[2]:
+        st.subheader("Área Estratégica")
+        master_key = st.text_input("Senha ADM", type="password", key="m_k")
+        if master_key == "Celina2610$$":
+            st.success("Modo Gerente Ativo")
             if os.path.exists("db_notas.csv"):
-                full = pd.read_csv("db_notas.csv")
-                c1, c2, c3 = st.columns(3)
-                c1.metric("Total Alunos", len(full))
-                c2.metric("Média Geral", round(full['Nota'].mean(), 1))
-                c3.metric("Turmas", full['Turma'].nunique())
-                st.bar_chart(full['Nota'].value_counts())
-                st.write("### Base de Dados Geral")
-                st.dataframe(full, use_container_width=True)
+                full_db = pd.read_csv("db_notas.csv")
+                col1, col2 = st.columns(2)
+                col1.metric("Alunos Avaliados", len(full_db))
+                col2.metric("Média Geral", round(full_db['Nota'].mean(), 1))
+                st.write("### Dashboard Completo")
+                st.bar_chart(full_db['Nota'].value_counts())
+                st.dataframe(full_db, use_container_width=True)
             if os.path.exists("professores.csv"):
-                st.write("### Professores Cadastrados")
+                st.write("### Docentes Cadastrados")
                 st.dataframe(pd.read_csv("professores.csv"), use_container_width=True)
-            
-            if st.button("🔐 Sair do Modo ADM"):
+            if st.button("🔐 Fechar Dashboard ADM"):
                 st.rerun()
