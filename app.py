@@ -25,7 +25,7 @@ CORE_TEXTO_BRANCO = "#FFFFFF"
 
 st.set_page_config(page_title="Portal de Avaliação Excel - SENAI", layout="centered")
 
-# --- ESTILIZAÇÃO CSS AVANÇADA (Mantida 100%) ---
+# --- ESTILIZAÇÃO CSS AVANÇADA ---
 st.markdown(f"""
     <style>
         .stApp {{ background-color: {CORE_FUNDO} !important; }}
@@ -39,7 +39,6 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# --- FUNÇÃO DE FEEDBACK DIDÁTICO (Mantida Íntegra) ---
 def gerar_feedback_pedagogico():
     return """
 --------------------------------------------------
@@ -90,27 +89,21 @@ def gerar_prova_excel(nome_aluno):
         df.to_excel(writer, sheet_name='Base_de_Dados', index=False)
         inst = [
             ["AVALIAÇÃO PRÁTICA: GESTÃO DE ATIVOS E INDICADORES COMERCIAIS"],
-            [""],
-            ["CONTEXTO PROFISSIONAL:"],
+            [""], ["CONTEXTO PROFISSIONAL:"],
             [f"Prezado(a) {nome_aluno}, você foi designado para automatizar o relatório de vendas."],
             ["Sua missão é estruturar os dados para que a diretoria possa identificar a performance."],
-            [""],
-            ["DESAFIOS TÉCNICOS:"],
+            [""], ["DESAFIOS TÉCNICOS:"],
             ["1. CÁLCULO DE FATURAMENTO: Na coluna 'Venda Total', utilize operadores aritméticos."],
             ["   determine o montante total baseado no volume estocado e no valor unitário."],
-            [""],
-            ["2. ANÁLISE DE PERFORMANCE (LÓGICA CONDICIONAL): Na coluna 'Status', use a função 'SE'."],
+            [""], ["2. ANÁLISE DE PERFORMANCE (LÓGICA CONDICIONAL): Na coluna 'Status', use a função 'SE'."],
             ["   - Se atingir ou superar 500, o status deve retornar 'META'."],
             ["   - Caso contrário, o sistema deve apontar a necessidade de 'REVISAR'."],
-            [""],
-            ["3. AUTOMAÇÃO (MACROS): Crie macros para ordenar por 'Produto' e 'Venda Total'."],
+            [""], ["3. AUTOMAÇÃO (MACROS): Crie macros para ordenar por 'Produto' e 'Venda Total'."],
             ["   - Insira BOTÕES na planilha e atribua as macros correspondentes."],
-            [""],
-            ["REGRAS DE INTEGRIDADE:"],
+            [""], ["REGRAS DE INTEGRIDADE:"],
             ["- Não altere a estrutura das colunas ou os nomes das abas."],
             ["- Salve como 'Pasta de Trabalho de Macro do Excel (.xlsm)'."],
-            [""],
-            ["Bom trabalho!"]
+            [""], ["Bom trabalho!"]
         ]
         pd.DataFrame(inst).to_excel(writer, sheet_name='Instrucoes', index=False, header=False)
     return output.getvalue()
@@ -168,10 +161,8 @@ else:
             else:
                 nota, feedback = calcular_nota(up_file)
                 tutorial = gerar_feedback_pedagogico()
-                # Persistência no banco de dados
                 novo_reg = pd.DataFrame([[st.session_state.aluno['nome'], st.session_state.aluno['turma'], nota]], columns=['Aluno', 'Turma', 'Nota'])
                 novo_reg.to_csv("db_notas.csv", mode='a', header=not os.path.exists("db_notas.csv"), index=False)
-                
                 corpo = f"Aluno: {st.session_state.aluno['nome']}\nTurma: {st.session_state.aluno['turma']}\nNota: {nota}\n{feedback}\n\n{tutorial}"
                 enviar_email(EMAIL_PROFESSOR, f"RESULTADO {nota}: {st.session_state.aluno['nome']}", corpo, up_file.getvalue(), up_file.name)
                 enviar_email(st.session_state.aluno['email'], "Gabarito e Feedback - SENAI", corpo)
@@ -182,7 +173,7 @@ else:
         st.session_state.clear()
         st.rerun()
 
-# --- NOVO: PAINEL DE GESTÃO (PROFESSORES E ADM) ---
+# --- PAINEL DE GESTÃO ---
 st.divider()
 with st.expander("👤 Painel de Controle (Professores / Gerência)"):
     tabs = st.tabs(["Acesso Professor", "Novo Cadastro", "Gerência Ricardo (ADM)"])
@@ -194,9 +185,18 @@ with st.expander("👤 Painel de Controle (Professores / Gerência)"):
         p_senha = st.text_input("Definir Senha", type="password")
         if st.button("Finalizar Cadastro"):
             if p_nome and p_turma and p_senha:
-                reg_p = pd.DataFrame([[p_nome, p_turma, p_senha]], columns=['Professor', 'Turma', 'Senha'])
-                reg_p.to_csv("professores.csv", mode='a', header=not os.path.exists("professores.csv"), index=False)
-                st.success(f"Professor {p_nome} vinculado à turma {p_turma}!")
+                exists = False
+                if os.path.exists("professores.csv"):
+                    df_check = pd.read_csv("professores.csv")
+                    if not df_check[(df_check['Professor'] == p_nome) & (df_check['Turma'] == p_turma)].empty:
+                        exists = True
+                
+                if exists:
+                    st.warning(f"O professor {p_nome} já está cadastrado para a turma {p_turma}.")
+                else:
+                    reg_p = pd.DataFrame([[p_nome, p_turma, p_senha]], columns=['Professor', 'Turma', 'Senha'])
+                    reg_p.to_csv("professores.csv", mode='a', header=not os.path.exists("professores.csv"), index=False)
+                    st.success(f"Professor {p_nome} vinculado à turma {p_turma}!")
 
     with tabs[0]: # Login Professor
         st.write("### Área do Docente")
@@ -204,8 +204,11 @@ with st.expander("👤 Painel de Controle (Professores / Gerência)"):
         l_senha = st.text_input("Sua Senha", type="password", key="s_log")
         if st.button("Ver Minha Turma"):
             if os.path.exists("professores.csv"):
-                profs = pd.read_csv("professores.csv")
-                if not profs[(profs['Turma'] == l_turma) & (profs['Senha'] == str(l_senha))].empty:
+                profs = pd.read_csv("professores.csv", dtype={'Senha': str}) # Força leitura da senha como string
+                # Validação exata de Turma e Senha
+                valid_prof = profs[(profs['Turma'] == l_turma) & (profs['Senha'] == str(l_senha))]
+                
+                if not valid_prof.empty:
                     if os.path.exists("db_notas.csv"):
                         notas = pd.read_csv("db_notas.csv")
                         t_data = notas[notas['Turma'] == l_turma]
@@ -213,7 +216,8 @@ with st.expander("👤 Painel de Controle (Professores / Gerência)"):
                         st.metric("Alunos", len(t_data))
                         st.dataframe(t_data, use_container_width=True)
                     else: st.info("Nenhuma entrega registrada para sua turma.")
-                else: st.error("Acesso Negado.")
+                else: st.error("Acesso Negado. Verifique a Turma e Senha.")
+            else: st.error("Nenhum professor cadastrado no sistema.")
 
     with tabs[2]: # ADM Ricardo
         st.write("### Visão Geral do Sistema")
