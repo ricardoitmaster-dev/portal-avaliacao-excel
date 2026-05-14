@@ -190,9 +190,7 @@ with st.expander("👤 Painel de Controle (Professores / Gerência)"):
                     df_check = pd.read_csv("professores.csv")
                     if not df_check[(df_check['Professor'] == p_nome) & (df_check['Turma'] == p_turma)].empty:
                         exists = True
-                
-                if exists:
-                    st.warning(f"O professor {p_nome} já está cadastrado para a turma {p_turma}.")
+                if exists: st.warning(f"O professor {p_nome} já está cadastrado para a turma {p_turma}.")
                 else:
                     reg_p = pd.DataFrame([[p_nome, p_turma, p_senha]], columns=['Professor', 'Turma', 'Senha'])
                     reg_p.to_csv("professores.csv", mode='a', header=not os.path.exists("professores.csv"), index=False)
@@ -204,18 +202,18 @@ with st.expander("👤 Painel de Controle (Professores / Gerência)"):
         l_senha = st.text_input("Sua Senha", type="password", key="s_log")
         if st.button("Ver Minha Turma"):
             if os.path.exists("professores.csv"):
-                profs = pd.read_csv("professores.csv", dtype={'Senha': str}) # Força leitura da senha como string
-                # Validação exata de Turma e Senha
+                profs = pd.read_csv("professores.csv", dtype={'Senha': str})
                 valid_prof = profs[(profs['Turma'] == l_turma) & (profs['Senha'] == str(l_senha))]
                 
                 if not valid_prof.empty:
+                    nome_prof = valid_prof.iloc[0]['Professor'] # Captura o nome do professor[cite: 1]
                     if os.path.exists("db_notas.csv"):
                         notas = pd.read_csv("db_notas.csv")
                         t_data = notas[notas['Turma'] == l_turma]
-                        st.subheader(f"📊 Resultados - Turma {l_turma}")
+                        st.subheader(f"📊 Professor(a): {nome_prof} - Turma: {l_turma}") # Exibe o nome[cite: 1]
                         st.metric("Alunos", len(t_data))
                         st.dataframe(t_data, use_container_width=True)
-                    else: st.info("Nenhuma entrega registrada para sua turma.")
+                    else: st.info(f"Professor(a) {nome_prof}, nenhuma entrega registrada para sua turma.")
                 else: st.error("Acesso Negado. Verifique a Turma e Senha.")
             else: st.error("Nenhum professor cadastrado no sistema.")
 
