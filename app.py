@@ -3,6 +3,7 @@ import pandas as pd
 import random
 import io
 import smtplib
+import base64
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
@@ -41,7 +42,16 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# --- FUNÇÃO DE FEEDBACK DIDÁTICO (NOVA) ---
+# --- FUNÇÃO PARA CONVERTER IMAGEM LOCAL EM BASE64 ---
+def get_base64(file_path):
+    try:
+        with open(file_path, "rb") as f:
+            data = f.read()
+        return base64.b64encode(data).decode()
+    except:
+        return ""
+
+# --- FUNÇÃO DE FEEDBACK PEDAGÓGICO ---
 def gerar_feedback_pedagogico():
     return """
 --------------------------------------------------
@@ -152,14 +162,25 @@ def calcular_nota(arquivo_bytes):
 # --- INTERFACE STREAMLIT ---
 if 'etapa' not in st.session_state: st.session_state.etapa = 'login'
 
-# CABEÇALHO ASSIMÉTRICO E ALINHADO (Exatamente como o seu original)
+# CABEÇALHO ASSIMÉTRICO E ALINHADO
 col_logo, col_espaco, col_assinatura = st.columns([1, 1, 1])
+
 with col_logo:
     st.image("https://upload.wikimedia.org/wikipedia/commons/8/8c/SENAI_S%C3%A3o_Paulo_logo.png", width=120)
+
 with col_assinatura:
-    st.markdown('<div style="display: flex; justify-content: flex-end;">', unsafe_allow_html=True)
-    st.image("Imagem para o app avaliação Excel_RicardoItmaster.png", width=220)
-    st.markdown('</div>', unsafe_allow_html=True)
+    # IMAGEM DA ASSINATURA CLICÁVEL (YOUTUBE)
+    img_b64 = get_base64("Imagem para o app avaliação Excel_RicardoItmaster.png")
+    st.markdown(
+        f"""
+        <div style="display: flex; justify-content: flex-end;">
+            <a href="https://www.youtube.com/channel/UCN8he2kZi8dhLs-1cIbfPzA" target="_blank">
+                <img src="data:image/png;base64,{img_b64}" width="220" style="cursor: pointer;" title="Clique para visitar meu canal">
+            </a>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 if st.session_state.etapa == 'login':
     st.title("Portal de Avaliação Profissional")
@@ -197,10 +218,10 @@ else:
                     nota, feedback = calcular_nota(arquivo_upload)
                     tutorial = gerar_feedback_pedagogico()
                     
-                    corpo_email = f"Aluno: {st.session_state.aluno['nome']}\nTurma: {st.session_state.aluno['turma']}\nNota: {nota}\n{feedback}\n\n{tutorial}"
+                    corpo = f"Aluno: {st.session_state.aluno['nome']}\nTurma: {st.session_state.aluno['turma']}\nNota: {nota}\n{feedback}\n\n{tutorial}"
                     
-                    enviar_email(EMAIL_PROFESSOR, f"RESULTADO {nota}: {st.session_state.aluno['nome']}", corpo_email, arquivo_upload.getvalue(), arquivo_upload.name)
-                    enviar_email(st.session_state.aluno['email'], "Confirmação de Entrega e Guia de Correção - SENAI", corpo_email)
+                    enviar_email(EMAIL_PROFESSOR, f"RESULTADO {nota}: {st.session_state.aluno['nome']}", corpo, arquivo_upload.getvalue(), arquivo_upload.name)
+                    enviar_email(st.session_state.aluno['email'], "Confirmação de Entrega e Guia de Correção - SENAI", corpo)
                     
                     st.success(f"Submissão realizada com sucesso! Nota: {nota}")
                     st.info(feedback)
