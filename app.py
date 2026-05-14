@@ -3,6 +3,7 @@ import pandas as pd
 import random
 import io
 import smtplib
+import base64
 import os
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -10,7 +11,7 @@ from email.mime.base import MIMEBase
 from email import encoders
 from openpyxl import load_workbook
 
-# --- CONFIGURAÇÕES ---
+# --- CONFIGURAÇÕES DE AMBIENTE ---
 try:
     EMAIL_PROFESSOR = st.secrets["EMAIL_PROFESSOR"]
     SENHA_APP_GOOGLE = st.secrets["SENHA_APP_GOOGLE"]
@@ -20,135 +21,207 @@ except:
 
 CORE_SENAI = "#FF0000"
 CORE_FUNDO = "#0E1117" 
+CORE_TEXTO_BRANCO = "#FFFFFF"
 
 st.set_page_config(page_title="Portal de Avaliação Excel - SENAI", layout="centered")
 
-# --- CSS ---
+# --- ESTILIZAÇÃO CSS AVANÇADA (Mantida 100%) ---
 st.markdown(f"""
     <style>
         .stApp {{ background-color: {CORE_FUNDO} !important; }}
-        h1 {{ color: {CORE_SENAI} !important; font-weight: bold; text-align: center; }}
-        label, p, span {{ color: #FFFFFF !important; }}
+        h1 {{ color: {CORE_SENAI} !important; font-weight: bold; text-align: center !important; }}
+        label, p, span {{ color: {CORE_TEXTO_BRANCO} !important; }}
         .stButton>button {{ color: white; background-color: #262730; border-radius: 8px; width: 100%; border: 1px solid {CORE_SENAI}; }}
+        .stButton>button:hover {{ background-color: {CORE_SENAI}; }}
+        .stDownloadButton>button {{ color: white !important; background-color: {CORE_SENAI} !important; font-weight: bold; width: 100%; }}
+        .stTextInput input {{ background-color: #262730 !important; color: white !important; }}
+        [data-testid="stHorizontalBlock"] {{ align-items: center; }}
     </style>
 """, unsafe_allow_html=True)
 
-def encerrar_sessao():
-    for key in list(st.session_state.keys()):
-        del st.session_state[key]
-    st.rerun()
+# --- FUNÇÃO DE FEEDBACK DIDÁTICO (Mantida Íntegra) ---
+def gerar_feedback_pedagogico():
+    return """
+--------------------------------------------------
+🎓 GUIA DE CORREÇÃO E BOAS PRÁTICAS (SENAI)
+--------------------------------------------------
+1. CÁLCULO DE FATURAMENTO:
+   - A fórmula correta para a 'Venda Total' é: =C2*D2
+   
+2. LÓGICA CONDICIONAL (Função SE):
+   - A fórmula esperada é: =SE(E2>=500;"META";"REVISAR")
+   
+3. FORMATAÇÃO E APRESENTAÇÃO PROFISSIONAL:
+   - MOEDA: Formate valores financeiros como 'Contábil' (R$).
+   - ESTÉTICA: Use bordas, negrito nos cabeçalhos e cores sóbrias.
+   - ALINHAMENTO: Centralize IDs e Quantidades para melhor leitura.
+   - MACROS: O arquivo deve ser salvo como .XLSM para manter a automação.
+--------------------------------------------------
+"""
 
-def gerar_desafio_excel(nome_aluno):
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        itens = ["Monitor LED", "Teclado Mecânico", "Mouse Óptico", "SSD 1TB", "Placa de Vídeo", "Fonte 600W"]
-        dados = [{"ID": i, "Produto": random.choice(itens), "Quantidade": random.randint(5, 50), "Preço Unit": round(random.uniform(100, 1500), 2), "Subtotal": 0, "IPI (10%)": 0, "Total Geral": 0, "Status": "", "Cod_Ref": random.randint(101, 106)} for i in range(1, 21)]
-        pd.DataFrame(dados).to_excel(writer, sheet_name='DESAFIO_PRATICO', index=False)
-        pd.DataFrame({"Cod": [101, 102, 103, 104, 105, 106], "Categoria": ["Periféricos", "Armazenamento", "Hardware", "Energia", "Vídeo", "Redes"]}).to_excel(writer, sheet_name='REFERENCIA', index=False)
-        
-        inst = [
-            ["CANDIDATO:", nome_aluno.upper()],
-            ["REQUISITOS DA PROVA:"],
-            ["1. TABELA:", "Converta os dados em Objeto Tabela."],
-            ["2. CÁLCULOS:", "Subtotal, IPI e Total Geral."],
-            ["3. LÓGICA:", "Função SE para Status."],
-            ["4. BUSCA:", "PROCV na aba REFERENCIA."],
-            ["5. MACROS:", "Crie macros de ordenação e botões."],
-            ["SALVE COMO:", f"Prova_{nome_aluno.replace(' ','_')}"]
-        ]
-        pd.DataFrame(inst).to_excel(writer, sheet_name='INSTRUCOES', index=False, header=False)
-    return output.getvalue()
-
-def realizar_correcao(lista_arquivos):
-    melhor_nota = 0
-    relatorio = ""
-    for arq in lista_arquivos:
-        try:
-            df = pd.read_excel(arq, sheet_name='DESAFIO_PRATICO')
-            wb = load_workbook(arq, keep_vba=True)
-            p = 0
-            res = [f"Análise: {arq.name}"]
-            if all(round(r['Subtotal'],1) == round(r['Quantidade']*r['Preço Unit'],1) for _,r in df.iterrows()): p += 25
-            if 'Status' in df.columns and not df['Status'].isnull().all(): p += 25
-            if 'Categoria' in df.columns: p += 25
-            if arq.name.endswith('.xlsm') and wb.vba_archive: p += 25
-            if p >= melhor_nota:
-                melhor_nota = p
-                relatorio = "\n".join(res) + f"\nNota: {p}/100"
-        except: continue
-    return melhor_nota, relatorio
-
-def enviar_emails(aluno_email, nome_aluno, nota, relato, arquivos):
-    corpo = f"Resultado SENAI\nAluno: {nome_aluno}\nNota: {nota}/100\n\n{relato}"
+def enviar_email(destinatario, assunto, corpo, arquivo_bytes=None, nome_arquivo=None):
     try:
-        for dest in [EMAIL_PROFESSOR, aluno_email]:
-            msg = MIMEMultipart()
-            msg['From'] = EMAIL_PROFESSOR
-            msg['To'] = dest
-            msg['Subject'] = f"Prova Excel - {nome_aluno}"
-            msg.attach(MIMEText(corpo, 'plain'))
-            for arq in arquivos:
-                part = MIMEBase('application', 'octet-stream')
-                part.set_payload(arq.getvalue())
-                encoders.encode_base64(part)
-                part.add_header('Content-Disposition', f"attachment; filename={arq.name}")
-                msg.attach(part)
-            server = smtplib.SMTP('smtp.gmail.com', 587)
-            server.starttls()
-            server.login(EMAIL_PROFESSOR, SENHA_APP_GOOGLE)
-            server.send_message(msg)
-            server.quit()
+        msg = MIMEMultipart()
+        msg['From'] = EMAIL_PROFESSOR
+        msg['To'] = destinatario
+        msg['Subject'] = assunto
+        msg.attach(MIMEText(corpo, 'plain'))
+        if arquivo_bytes:
+            part = MIMEBase('application', 'octet-stream')
+            part.set_payload(arquivo_bytes)
+            encoders.encode_base64(part)
+            part.add_header('Content-Disposition', f"attachment; filename={nome_arquivo}")
+            msg.attach(part)
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(EMAIL_PROFESSOR, SENHA_APP_GOOGLE)
+        server.send_message(msg)
+        server.quit()
         return True
     except: return False
+
+def gerar_prova_excel(nome_aluno):
+    itens = ["Notebook", "Mouse", "Teclado", "Monitor", "Impressora", "Cabo HDMI", "SSD 480GB"]
+    dados = [{"ID": i, "Produto": random.choice(itens), "Quantidade": random.randint(5, 50), 
+              "Preço Unitário": round(random.uniform(20, 300), 2), "Venda Total": 0, "Status": ""} for i in range(1, 31)]
+    df = pd.DataFrame(dados)
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, sheet_name='Base_de_Dados', index=False)
+        inst = [
+            ["AVALIAÇÃO PRÁTICA: GESTÃO DE ATIVOS E INDICADORES COMERCIAIS"],
+            [""],
+            ["CONTEXTO PROFISSIONAL:"],
+            [f"Prezado(a) {nome_aluno}, você foi designado para automatizar o relatório de vendas."],
+            ["Sua missão é estruturar os dados para que a diretoria possa identificar a performance."],
+            [""],
+            ["DESAFIOS TÉCNICOS:"],
+            ["1. CÁLCULO DE FATURAMENTO: Na coluna 'Venda Total', utilize operadores aritméticos."],
+            ["   determine o montante total baseado no volume estocado e no valor unitário."],
+            [""],
+            ["2. ANÁLISE DE PERFORMANCE (LÓGICA CONDICIONAL): Na coluna 'Status', use a função 'SE'."],
+            ["   - Se atingir ou superar 500, o status deve retornar 'META'."],
+            ["   - Caso contrário, o sistema deve apontar a necessidade de 'REVISAR'."],
+            [""],
+            ["3. AUTOMAÇÃO (MACROS): Crie macros para ordenar por 'Produto' e 'Venda Total'."],
+            ["   - Insira BOTÕES na planilha e atribua as macros correspondentes."],
+            [""],
+            ["REGRAS DE INTEGRIDADE:"],
+            ["- Não altere a estrutura das colunas ou os nomes das abas."],
+            ["- Salve como 'Pasta de Trabalho de Macro do Excel (.xlsm)'."],
+            [""],
+            ["Bom trabalho!"]
+        ]
+        pd.DataFrame(inst).to_excel(writer, sheet_name='Instrucoes', index=False, header=False)
+    return output.getvalue()
+
+def calcular_nota(arquivo_bytes):
+    try:
+        df = pd.read_excel(arquivo_bytes, sheet_name='Base_de_Dados', engine='openpyxl')
+        pv, ps, total = 0, 0, len(df)
+        for _, row in df.iterrows():
+            calc = round(float(row['Quantidade'] * row['Preço Unitário']), 2)
+            if round(float(row['Venda Total']), 2) == calc: pv += 1
+            meta = "META" if calc >= 500 else "REVISAR"
+            if str(row['Status']).strip().upper() == meta: ps += 1
+        try:
+            wb = load_workbook(arquivo_bytes, keep_vba=True)
+            tem_macro = 2.0 if wb.vba_archive else 0.0
+        except: tem_macro = 0.0
+        nota = round(((pv / total) * 4) + ((ps / total) * 4) + tem_macro, 1)
+        feedback_macro = "Macro detectada (+2.0)" if tem_macro > 0 else "Nenhuma Macro detectada (0.0)"
+        return nota, f"Cálculos: {pv}/{total} | Lógica SE: {ps}/{total} | {feedback_macro}"
+    except: return 0, "Erro: Certifique-se de preencher a aba 'Base_de_Dados' corretamente."
 
 # --- INTERFACE ---
 if 'etapa' not in st.session_state: st.session_state.etapa = 'login'
 
+col_logo, col_espaco, col_assinatura = st.columns([1, 1, 1])
+with col_logo: st.image("https://upload.wikimedia.org/wikipedia/commons/8/8c/SENAI_S%C3%A3o_Paulo_logo.png", width=120)
+with col_assinatura:
+    st.markdown('<div style="display: flex; justify-content: flex-end;">', unsafe_allow_html=True)
+    st.image("Imagem para o app avaliação Excel_RicardoItmaster.png", width=220)
+    st.markdown('</div>', unsafe_allow_html=True)
+
 if st.session_state.etapa == 'login':
-    st.title("Portal de Avaliação SENAI")
-    n = st.text_input("Nome Completo")
-    t = st.text_input("Turma").strip().upper()
-    e = st.text_input("E-mail")
-    if st.button("Acessar Prova"):
-        if n and t and e:
-            st.session_state.aluno = {"nome": n, "turma": t, "email": e}
-            st.session_state.prova_origem = gerar_desafio_excel(n)
-            st.session_state.nome_limpo = n.replace(" ","_")
+    st.title("Portal de Avaliação Profissional")
+    nome = st.text_input("Nome Completo do Aluno")
+    turma = st.text_input("Identificação da Turma")
+    email = st.text_input("E-mail Institucional/Pessoal")
+    if st.button("Acessar Ambiente de Prova"):
+        if nome and turma and email:
+            st.session_state.aluno = {"nome": nome, "turma": turma.strip().upper(), "email": email}
+            st.session_state.nome_esperado = f"Avaliacao_{nome.replace(' ','_')}.xlsx"
+            st.session_state.excel_data = gerar_prova_excel(nome)
             st.session_state.etapa = 'prova'
             st.rerun()
-
-elif st.session_state.etapa == 'prova':
-    st.title("Avaliação Prática")
-    st.write(f"Candidato: **{st.session_state.aluno['nome']}**")
-    
-    st.download_button("📥 1. Baixar Arquivo de Prova", st.session_state.prova_origem, f"Prova_{st.session_state.nome_limpo}.xlsx")
-    
+else:
+    st.title("Laboratório de Entrega")
+    st.write(f"Candidato: **{st.session_state.aluno['nome']}** | Turma: **{st.session_state.aluno['turma']}**")
+    st.download_button("📥 1. Baixar Caderno de Questões", st.session_state.excel_data, st.session_state.nome_esperado)
     st.divider()
-    st.subheader("2. Entregar Resolução")
-    ups = st.file_uploader("Selecione seus arquivos (.xlsx ou .xlsm)", type=['xlsx', 'xlsm'], accept_multiple_files=True)
-    
-    # --- VALIDAÇÃO DE SEGURANÇA EM TEMPO REAL ---
-    arquivos_validos = []
-    if ups:
-        for arq in ups:
-            if st.session_state.nome_limpo.lower() in arq.name.lower():
-                arquivos_validos.append(arq)
+    up_file = st.file_uploader("2. Enviar Solução (xlsx ou xlsm)", type=['xlsx', 'xlsm'])
+    if st.button("🚀 3. Submeter para Correção"):
+        if up_file:
+            if up_file.name.split('.')[0] != st.session_state.nome_esperado.split('.')[0]:
+                st.error("SISTEMA DE SEGURANÇA: Nome do arquivo divergente.")
             else:
-                st.error(f"⚠️ ARQUIVO INVÁLIDO: O arquivo '{arq.name}' não contém seu nome. Por favor, renomeie-o corretamente antes de enviar.")
+                nota, feedback = calcular_nota(up_file)
+                tutorial = gerar_feedback_pedagogico()
+                # Persistência no banco de dados
+                novo_reg = pd.DataFrame([[st.session_state.aluno['nome'], st.session_state.aluno['turma'], nota]], columns=['Aluno', 'Turma', 'Nota'])
+                novo_reg.to_csv("db_notas.csv", mode='a', header=not os.path.exists("db_notas.csv"), index=False)
+                
+                corpo = f"Aluno: {st.session_state.aluno['nome']}\nTurma: {st.session_state.aluno['turma']}\nNota: {nota}\n{feedback}\n\n{tutorial}"
+                enviar_email(EMAIL_PROFESSOR, f"RESULTADO {nota}: {st.session_state.aluno['nome']}", corpo, up_file.getvalue(), up_file.name)
+                enviar_email(st.session_state.aluno['email'], "Gabarito e Feedback - SENAI", corpo)
+                st.success(f"Submissão realizada! Nota: {nota}")
+                st.info(feedback)
+                st.balloons()
+    if st.button("Encerrar Sessão"):
+        st.session_state.clear()
+        st.rerun()
 
-    # Só habilita o botão se houver arquivos e todos forem válidos
-    if st.button("🚀 Finalizar e Enviar para Correção"):
-        if len(arquivos_validos) == len(ups) and ups:
-            nota, relato = realizar_correcao(ups)
-            sucesso = enviar_emails(st.session_state.aluno['email'], st.session_state.aluno['nome'], nota, relato, ups)
-            if sucesso:
-                st.success(f"Nota: {nota}/100. Relatório enviado para você e para o professor!")
-                st.text(relato)
-        elif not ups:
-            st.warning("Por favor, faça o upload de pelo menos um arquivo.")
-        else:
-            st.error("Corrija os nomes dos arquivos acima para habilitar o envio.")
+# --- NOVO: PAINEL DE GESTÃO (PROFESSORES E ADM) ---
+st.divider()
+with st.expander("👤 Painel de Controle (Professores / Gerência)"):
+    tabs = st.tabs(["Acesso Professor", "Novo Cadastro", "Gerência Ricardo (ADM)"])
+    
+    with tabs[1]: # Cadastro
+        st.write("### Cadastrar Novo Docente")
+        p_nome = st.text_input("Nome do Professor")
+        p_turma = st.text_input("Turma Autorizada", key="t_cad").strip().upper()
+        p_senha = st.text_input("Definir Senha", type="password")
+        if st.button("Finalizar Cadastro"):
+            if p_nome and p_turma and p_senha:
+                reg_p = pd.DataFrame([[p_nome, p_turma, p_senha]], columns=['Professor', 'Turma', 'Senha'])
+                reg_p.to_csv("professores.csv", mode='a', header=not os.path.exists("professores.csv"), index=False)
+                st.success(f"Professor {p_nome} vinculado à turma {p_turma}!")
 
-    st.divider()
-    if st.button("🛑 Encerrar Sessão"):
-        encerrar_sessao()
+    with tabs[0]: # Login Professor
+        st.write("### Área do Docente")
+        l_turma = st.text_input("Sua Turma", key="t_log").strip().upper()
+        l_senha = st.text_input("Sua Senha", type="password", key="s_log")
+        if st.button("Ver Minha Turma"):
+            if os.path.exists("professores.csv"):
+                profs = pd.read_csv("professores.csv")
+                if not profs[(profs['Turma'] == l_turma) & (profs['Senha'] == str(l_senha))].empty:
+                    if os.path.exists("db_notas.csv"):
+                        notas = pd.read_csv("db_notas.csv")
+                        t_data = notas[notas['Turma'] == l_turma]
+                        st.subheader(f"📊 Resultados - Turma {l_turma}")
+                        st.metric("Alunos", len(t_data))
+                        st.dataframe(t_data, use_container_width=True)
+                    else: st.info("Nenhuma entrega registrada para sua turma.")
+                else: st.error("Acesso Negado.")
+
+    with tabs[2]: # ADM Ricardo
+        st.write("### Visão Geral do Sistema")
+        m_senha = st.text_input("Senha de Gerência", type="password")
+        if m_senha == "ricardoitmaster":
+            if os.path.exists("db_notas.csv"):
+                st.write("### Relatório Consolidado de Notas")
+                st.dataframe(pd.read_csv("db_notas.csv"), use_container_width=True)
+            if os.path.exists("professores.csv"):
+                st.write("### Lista de Professores Ativos")
+                st.dataframe(pd.read_csv("professores.csv"), use_container_width=True)
