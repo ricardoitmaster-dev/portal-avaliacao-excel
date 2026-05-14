@@ -1,4 +1,4 @@
-import streamlit as st
+ import streamlit as st
 import pandas as pd
 import random
 import io
@@ -8,7 +8,7 @@ from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
 from openpyxl import load_workbook
- 
+
 # --- CONFIGURAÇÕES DE AMBIENTE ---
 try:
     EMAIL_PROFESSOR = st.secrets["EMAIL_PROFESSOR"]
@@ -16,13 +16,13 @@ try:
 except:
     EMAIL_PROFESSOR = "ricardoitmaster@gmail.com"
     SENHA_APP_GOOGLE = "ugjhusmwnbmgzspv"
- 
+
 CORE_SENAI = "#FF0000"
 CORE_FUNDO = "#0E1117" 
 CORE_TEXTO_BRANCO = "#FFFFFF"
- 
+
 st.set_page_config(page_title="Portal de Avaliação Excel - SENAI", layout="centered")
- 
+
 # --- ESTILIZAÇÃO CSS AVANÇADA ---
 st.markdown(f"""
     <style>
@@ -40,7 +40,27 @@ st.markdown(f"""
         }}
     </style>
 """, unsafe_allow_html=True)
- 
+
+# --- FUNÇÃO DE FEEDBACK DIDÁTICO (NOVA) ---
+def gerar_feedback_pedagogico():
+    return """
+--------------------------------------------------
+🎓 GUIA DE CORREÇÃO E BOAS PRÁTICAS (SENAI)
+--------------------------------------------------
+1. CÁLCULO DE FATURAMENTO:
+   - A fórmula correta para a 'Venda Total' é: =C2*D2
+   
+2. LÓGICA CONDICIONAL (Função SE):
+   - A fórmula esperada é: =SE(E2>=500;"META";"REVISAR")
+   
+3. FORMATAÇÃO E APRESENTAÇÃO PROFISSIONAL:
+   - MOEDA: Formate valores financeiros como 'Contábil' (R$).
+   - ESTÉTICA: Use bordas, negrito nos cabeçalhos e cores sóbrias.
+   - ALINHAMENTO: Centralize IDs e Quantidades para melhor leitura.
+   - MACROS: O arquivo deve ser salvo como .XLSM para manter a automação.
+--------------------------------------------------
+"""
+
 def enviar_email(destinatario, assunto, corpo, arquivo_bytes=None, nome_arquivo=None):
     try:
         msg = MIMEMultipart()
@@ -62,7 +82,7 @@ def enviar_email(destinatario, assunto, corpo, arquivo_bytes=None, nome_arquivo=
         return True
     except:
         return False
- 
+
 def gerar_prova_excel(nome_aluno):
     itens = ["Notebook", "Mouse", "Teclado", "Monitor", "Impressora", "Cabo HDMI", "SSD 480GB"]
     dados = [{"ID": i, "Produto": random.choice(itens), "Quantidade": random.randint(5, 50), 
@@ -103,7 +123,7 @@ def gerar_prova_excel(nome_aluno):
         ]
         pd.DataFrame(inst).to_excel(writer, sheet_name='Instrucoes', index=False, header=False)
     return output.getvalue()
- 
+
 def calcular_nota(arquivo_bytes):
     try:
         df = pd.read_excel(arquivo_bytes, sheet_name='Base_de_Dados', engine='openpyxl')
@@ -119,7 +139,7 @@ def calcular_nota(arquivo_bytes):
             tem_macro = 2.0 if wb.vba_archive else 0.0
         except:
             tem_macro = 0.0
- 
+
         nota_fórmulas = (pv / total) * 4
         nota_se = (ps / total) * 4
         nota = round(nota_fórmulas + nota_se + tem_macro, 1)
@@ -128,18 +148,15 @@ def calcular_nota(arquivo_bytes):
         return nota, f"Cálculos: {pv}/{total} | Lógica SE: {ps}/{total} | {feedback_macro}"
     except:
         return 0, "Erro: Certifique-se de preencher a aba 'Base_de_Dados' corretamente e salvar o arquivo."
- 
+
 # --- INTERFACE STREAMLIT ---
 if 'etapa' not in st.session_state: st.session_state.etapa = 'login'
- 
-# CABEÇALHO ASSIMÉTRICO E ALINHADO
-col_logo, col_espaco, col_assinatura = st.columns([1, 1, 1])
 
+# CABEÇALHO ASSIMÉTRICO E ALINHADO (Exatamente como o seu original)
+col_logo, col_espaco, col_assinatura = st.columns([1, 1, 1])
 with col_logo:
     st.image("https://upload.wikimedia.org/wikipedia/commons/8/8c/SENAI_S%C3%A3o_Paulo_logo.png", width=120)
-
 with col_assinatura:
-    # Alinhando a imagem da assinatura totalmente à direita
     st.markdown('<div style="display: flex; justify-content: flex-end;">', unsafe_allow_html=True)
     st.image("Imagem para o app avaliação Excel_RicardoItmaster.png", width=220)
     st.markdown('</div>', unsafe_allow_html=True)
@@ -178,10 +195,12 @@ else:
             else:
                 with st.spinner('Analisando fórmulas, lógica e macros...'):
                     nota, feedback = calcular_nota(arquivo_upload)
-                    corpo = f"Aluno: {st.session_state.aluno['nome']}\nTurma: {st.session_state.aluno['turma']}\nNota: {nota}\n{feedback}"
+                    tutorial = gerar_feedback_pedagogico()
                     
-                    enviar_email(EMAIL_PROFESSOR, f"RESULTADO {nota}: {st.session_state.aluno['nome']}", corpo, arquivo_upload.getvalue(), arquivo_upload.name)
-                    enviar_email(st.session_state.aluno['email'], "Confirmação de Entrega - SENAI", corpo)
+                    corpo_email = f"Aluno: {st.session_state.aluno['nome']}\nTurma: {st.session_state.aluno['turma']}\nNota: {nota}\n{feedback}\n\n{tutorial}"
+                    
+                    enviar_email(EMAIL_PROFESSOR, f"RESULTADO {nota}: {st.session_state.aluno['nome']}", corpo_email, arquivo_upload.getvalue(), arquivo_upload.name)
+                    enviar_email(st.session_state.aluno['email'], "Confirmação de Entrega e Guia de Correção - SENAI", corpo_email)
                     
                     st.success(f"Submissão realizada com sucesso! Nota: {nota}")
                     st.info(feedback)
