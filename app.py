@@ -37,10 +37,9 @@ st.markdown(f"""
             background-color: {COR_AZUL_BMW}; 
             border-radius: 10px; 
             border: 1px solid {COR_DOURADO};
-            height: 3.8em;
+            height: 4em;
             font-weight: bold;
             width: 100%;
-            margin-top: 10px;
         }}
         .stButton>button:hover {{ border: 2px solid {COR_TEXTO}; color: {COR_DOURADO}; }}
         .stDownloadButton>button {{ 
@@ -54,7 +53,8 @@ st.markdown(f"""
         .btn-sair-container button {{
             background-color: #7B0000 !important;
             border: 1px solid #FFFFFF !important;
-            margin-top: 20px;
+            margin-top: 30px;
+            height: 3.2em !important;
         }}
     </style>
 """, unsafe_allow_html=True)
@@ -80,8 +80,7 @@ def enviar_email(destinatario, assunto, corpo, arquivos=None):
         server.send_message(msg)
         server.quit()
         return True
-    except:
-        return False
+    except: return False
 
 def gerar_prova_excel(nome_aluno):
     itens = ["Notebook", "Mouse", "Teclado", "Monitor", "Impressora", "Cabo HDMI", "SSD 480GB"]
@@ -91,16 +90,19 @@ def gerar_prova_excel(nome_aluno):
         qtd = random.randint(5, 50)
         preco = round(random.uniform(20, 300), 2)
         dados.append({"ID": i, "Produto": item, "Quantidade": qtd, "Preço Unitário": preco, "Venda Total": 0, "Status": ""})
-    
     df = pd.DataFrame(dados)
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         df.to_excel(writer, sheet_name='Base_de_Dados', index=False)
         instrucoes = [
-            ["AVALIAÇÃO PRÁTICA DE EXCEL"], [f"Nome do Aluno: {nome_aluno}"], [""], ["INSTRUÇÕES:"],
+            ["AVALIAÇÃO PRÁTICA DE EXCEL"],
+            [f"Nome do Aluno: {nome_aluno}"],
+            [""],
             ["1. Calcule a coluna 'Venda Total' (Quantidade x Preço Unitário)"],
-            ["2. Na coluna 'Status', use a função SE (>= 500 META, caso contrário REVISAR)"],
-            ["3. Crie uma macro simples de formatação e salve o arquivo como .xlsm"]
+            ["2. Na coluna 'Status', use a função SE:"],
+            ["   - Se Venda Total for >= 500, escreva 'META'"],
+            ["   - Caso contrário, escreva 'REVISAR'"],
+            ["3. Crie uma macro de formatação e salve como .xlsm"]
         ]
         pd.DataFrame(instrucoes).to_excel(writer, sheet_name='Instrucoes', index=False, header=False)
     return output.getvalue()
@@ -108,113 +110,125 @@ def gerar_prova_excel(nome_aluno):
 def calcular_nota(arquivo_bytes):
     try:
         df = pd.read_excel(arquivo_bytes, sheet_name='Base_de_Dados', engine='openpyxl')
-        acertos_venda = 0
-        acertos_status = 0
-        total_linhas = len(df)
+        ac_v, ac_s, total = 0, 0, len(df)
         for _, row in df.iterrows():
-            calc_venda = round(float(row['Quantidade'] * row['Preço Unitário']), 2)
-            if round(float(row['Venda Total']), 2) == calc_venda: acertos_venda += 1
-            status_esp = "META" if calc_venda >= 500 else "REVISAR"
-            if str(row['Status']).strip().upper() == status_esp: acertos_status += 1
+            calc = round(float(row['Quantidade'] * row['Preço Unitário']), 2)
+            if round(float(row['Venda Total']), 2) == calc: ac_v += 1
+            meta = "META" if calc >= 500 else "REVISAR"
+            if str(row['Status']).strip().upper() == meta: ac_s += 1
         try:
             wb = load_workbook(arquivo_bytes, keep_vba=True)
-            tem_macro = 2.0 if wb.vba_archive else 0.0
-        except: tem_macro = 0.0
-        nota_final = round(((acertos_venda / total_linhas) * 4) + ((acertos_status / total_linhas) * 4) + tem_macro, 1)
-        return nota_final, f"Vendas: {acertos_venda} | Status: {acertos_status} | Macro: {tem_macro}"
-    except Exception as e:
-        return 0, f"Erro: {str(e)}"
+            macro = 2.0 if wb.vba_archive else 0.0
+        except: macro = 0.0
+        nota = round(((ac_v / total) * 4) + ((ac_s / total) * 4) + macro, 1)
+        return nota, f"Vendas: {ac_v}/{total} | Status: {ac_s}/{total} | Macro: {macro}"
+    except Exception as e: return 0, f"Erro: {str(e)}"
 
 # --- INICIALIZAÇÃO ---
 if 'perfil' not in st.session_state: st.session_state.perfil = None
 if 'etapa_aluno' not in st.session_state: st.session_state.etapa_aluno = 'login'
 
 # --- CABEÇALHO ---
-col_l, col_c, col_r = st.columns([1, 2, 1])
-with col_l: st.image("https://upload.wikimedia.org/wikipedia/commons/8/8c/SENAI_S%C3%A3o_Paulo_logo.png", width=150)
-with col_r: st.image("Imagem para o app avaliação Excel_RicardoItmaster.png", width=220)
+c1, c2, c3 = st.columns([1, 2, 1])
+with c1: st.image("https://upload.wikimedia.org/wikipedia/commons/8/8c/SENAI_S%C3%A3o_Paulo_logo.png", width=150)
+with c3: st.image("Imagem para o app avaliação Excel_RicardoItmaster.png", width=220)
 
-# --- FLUXO PRINCIPAL ---
+# --- TELA INICIAL ---
 if st.session_state.perfil is None:
-    st.markdown("<br><br>", unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
     st.title("Sistema de Avaliação Técnica")
-    st.write("### Olá! Por favor, escolha uma opção para continuar:")
-    _, col_btn, _ = st.columns([1.3, 1, 1.3])
-    with col_btn:
-        if st.button("🎓 ACESSO DO ALUNO"):
-            st.session_state.perfil = "aluno"
-            st.rerun()
-        if st.button("👨‍🏫 PAINEL DO PROFESSOR"):
-            st.session_state.perfil = "admin"
-            st.rerun()
+    st.write("### Selecione seu perfil de acesso:")
+    
+    # DISPOSIÇÃO HORIZONTAL
+    _, col1, col2, _ = st.columns([0.8, 1, 1, 0.8])
+    with col1:
+        if st.button("🎓 SOU ALUNO"):
+            st.session_state.perfil = "aluno"; st.rerun()
+    with col2:
+        if st.button("👨‍🏫 PROFESSOR / GESTOR"):
+            st.session_state.perfil = "admin"; st.rerun()
+    
+    # SAIR CENTRALIZADO ABAIXO
+    _, col_sair, _ = st.columns([1.5, 1, 1.5])
+    with col_sair:
         st.markdown('<div class="btn-sair-container">', unsafe_allow_html=True)
-        if st.button("❌ FECHAR / SAIR DO SISTEMA"):
-            for key in list(st.session_state.keys()): del st.session_state[key]
+        if st.button("❌ SAIR DO SISTEMA"):
+            for k in list(st.session_state.keys()): del st.session_state[k]
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
+# --- ÁREA DO ALUNO ---
 elif st.session_state.perfil == "aluno":
-    if st.button("⬅️ Voltar ao Menu Principal"):
+    if st.button("⬅️ Menu Principal"): 
         st.session_state.perfil = None
         st.rerun()
+    
     if st.session_state.etapa_aluno == 'login':
         st.subheader("Identificação do Estudante")
-        with st.form("form_identificacao"):
-            nome = st.text_input("Nome Completo").strip()
-            turma = st.text_input("Sua Turma").strip().upper()
-            email = st.text_input("Seu E-mail").strip()
+        with st.form("f_aluno"):
+            n = st.text_input("Nome Completo").strip()
+            t = st.text_input("Turma").strip().upper()
+            e = st.text_input("E-mail para Receber Cópia").strip()
             if st.form_submit_button("Gerar Minha Prova"):
-                if nome and turma and email:
-                    st.session_state.aluno_dados = {"nome": nome, "turma": turma, "email": email}
-                    st.session_state.excel_data = gerar_prova_excel(nome)
-                    st.session_state.etapa_aluno = 'prova'
-                    st.rerun()
-    elif st.session_state.etapa_aluno == 'prova':
-        st.write(f"### Bem-vindo, {st.session_state.aluno_dados['nome']}!")
-        nome_esp = f"Avaliacao_{st.session_state.aluno_dados['nome'].replace(' ', '_')}"
-        st.info(f"Resolva os desafios e envie o arquivo como: **{nome_esp}**")
-        st.download_button("📥 Baixar Planilha", st.session_state.excel_data, f"{nome_esp}.xlsx")
-        st.divider()
-        up_files = st.file_uploader("Envie sua prova (.xlsx ou .xlsm)", type=['xlsx', 'xlsm'], accept_multiple_files=True)
-        if st.button("🚀 Finalizar e Enviar"):
-            if up_files:
-                validos = [f for f in up_files if f.name.split('.')[0].lower() == nome_esp.lower()]
-                if not validos:
-                    st.error(f"Renomeie o arquivo para: {nome_esp}")
-                else:
-                    arq_final = next((f for f in validos if f.name.endswith('xlsm')), validos[0])
-                    nota, info = calcular_nota(arq_final)
-                    pd.DataFrame([[st.session_state.aluno_dados['nome'], st.session_state.aluno_dados['turma'], nota]], columns=['Aluno', 'Turma', 'Nota']).to_csv("db_notas.csv", mode='a', header=not os.path.exists("db_notas.csv"), index=False)
-                    enviar_email(EMAIL_PROFESSOR, f"Prova - {st.session_state.aluno_dados['nome']}", f"Nota: {nota}\nResumo: {info}", [(f.getvalue(), f.name) for f in up_files])
-                    st.success(f"Enviada! Nota: {nota}"); st.balloons()
+                if n and t and e:
+                    st.session_state.aluno_dados = {"nome": n, "turma": t, "email": e}
+                    st.session_state.excel_data = gerar_prova_excel(n)
+                    st.session_state.etapa_aluno = 'prova'; st.rerun()
+                else: st.warning("Preencha todos os campos.")
 
+    elif st.session_state.etapa_aluno == 'prova':
+        st.write(f"### Olá, {st.session_state.aluno_dados['nome']}!")
+        nome_esp = f"Avaliacao_{st.session_state.aluno_dados['nome'].replace(' ', '_')}"
+        st.info(f"Baixe o arquivo, resolva e envie com o nome exato: **{nome_esp}**")
+        st.download_button("📥 Baixar Planilha de Prova", st.session_state.excel_data, f"{nome_esp}.xlsx")
+        st.divider()
+        up = st.file_uploader("Upload da Prova (.xlsx ou .xlsm)", type=['xlsx', 'xlsm'], accept_multiple_files=True)
+        if st.button("🚀 Finalizar Entrega"):
+            if up:
+                validos = [f for f in up if f.name.split('.')[0].lower() == nome_esp.lower()]
+                if not validos: st.error(f"O nome do arquivo deve ser: {nome_esp}")
+                else:
+                    arq = next((f for f in validos if f.name.endswith('xlsm')), validos[0])
+                    nota, info = calcular_nota(arq)
+                    pd.DataFrame([[st.session_state.aluno_dados['nome'], st.session_state.aluno_dados['turma'], nota]], columns=['Aluno', 'Turma', 'Nota']).to_csv("db_notas.csv", mode='a', header=not os.path.exists("db_notas.csv"), index=False)
+                    enviar_email(EMAIL_PROFESSOR, f"Prova: {st.session_state.aluno_dados['nome']}", f"Nota: {nota}\n{info}", [(f.getvalue(), f.name) for f in up])
+                    st.success(f"Prova enviada! Nota: {nota}"); st.balloons()
+
+# --- ÁREA ADMINISTRATIVA ---
 elif st.session_state.perfil == "admin":
-    if st.button("⬅️ Voltar ao Menu Principal"):
-        st.session_state.perfil = None
-        st.rerun()
-    tabs = st.tabs(["📊 Notas das Turmas", "📝 Cadastro de Professores", "🛡️ Área da Gerência"])
-    with tabs[0]:
-        st.subheader("Consulta de Resultados")
+    if st.button("⬅️ Menu Principal"): st.session_state.perfil = None; st.rerun()
+    t1, t2, t3 = st.tabs(["📊 Notas das Turmas", "📝 Cadastro de Professores", "🛡️ Área ADM"])
+    
+    with t1:
+        st.subheader("Consulta de Notas")
         if os.path.exists("professores.csv"):
-            df_p = pd.read_csv("professores.csv")
-            n_p = st.text_input("Nome do Professor").strip()
-            s_p = st.text_input("Senha", type="password")
-            if st.button("Ver Minhas Turmas"):
-                auth = df_p[(df_p['Professor'].str.lower() == n_p.lower()) & (df_p['Senha'] == str(s_p))]
+            np = st.text_input("Nome Cadastrado").strip()
+            sp = st.text_input("Senha", type="password")
+            if st.button("Acessar Dados"):
+                dfp = pd.read_csv("professores.csv")
+                auth = dfp[(dfp['Professor'].str.lower() == np.lower()) & (dfp['Senha'] == str(sp))]
                 if not auth.empty:
-                    turmas = auth['Turma'].unique()
                     if os.path.exists("db_notas.csv"):
-                        all_n = pd.read_csv("db_notas.csv")
-                        st.dataframe(all_n[all_n['Turma'].isin(turmas)], use_container_width=True)
-                else: st.error("Acesso negado.")
-    with tabs[1]:
-        with st.form("cad_p"):
-            np, tp, sp = st.text_input("Nome"), st.text_input("Turma").upper(), st.text_input("Senha", type="password")
-            if st.form_submit_button("Cadastrar"):
-                pd.DataFrame([[np, tp, sp]], columns=['Professor', 'Turma', 'Senha']).to_csv("professores.csv", mode='a', header=not os.path.exists("professores.csv"), index=False)
-                st.success("Cadastrado!")
-    with tabs[2]:
-        if st.text_input("Senha Mestra", type="password") == "Celina2610$$":
+                        db = pd.read_csv("db_notas.csv")
+                        st.dataframe(db[db['Turma'].isin(auth['Turma'].unique())], use_container_width=True)
+                    else: st.info("Nenhuma nota registrada.")
+                else: st.error("Acesso Negado.")
+
+    with t2:
+        st.subheader("Novo Professor")
+        with st.form("c_p"):
+            new_n = st.text_input("Nome")
+            new_t = st.text_input("Turma").upper()
+            new_s = st.text_input("Senha", type="password")
+            if st.form_submit_button("Salvar Cadastro"):
+                pd.DataFrame([[new_n, new_t, new_s]], columns=['Professor','Turma','Senha']).to_csv("professores.csv", mode='a', header=not os.path.exists("professores.csv"), index=False)
+                st.success("Cadastrado com sucesso!")
+
+    with t3:
+        st.subheader("Gerência Mestra")
+        if st.text_input("Senha ADM", type="password") == "Celina2610$$":
             if os.path.exists("db_notas.csv"):
                 st.dataframe(pd.read_csv("db_notas.csv"), use_container_width=True)
-                if st.button("Limpar Dados"): os.remove("db_notas.csv"); st.rerun()
+                if st.button("Limpar Banco de Dados"):
+                    os.remove("db_notas.csv"); st.rerun()
+            else: st.info("Banco vazio.")
