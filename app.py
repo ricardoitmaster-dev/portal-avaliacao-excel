@@ -50,11 +50,26 @@ st.markdown(f"""
         }}
         .stTextInput input {{ background-color: #1A1A1A !important; color: white !important; border: 1px solid {COR_AZUL_BMW} !important; }}
         [data-testid="stHorizontalBlock"] {{ align-items: center !important; }}
-        .btn-sair-container button {{
-            background-color: #7B0000 !important;
-            border: 1px solid #FFFFFF !important;
+        
+        /* Estilo para o link que parece um botão de sair */
+        .btn-sair-link {{
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-decoration: none !important;
+            background-color: #7B0000;
+            color: white !important;
+            font-weight: bold;
+            border: 1px solid white;
+            border-radius: 10px;
+            height: 3.5em;
+            width: 100%;
             margin-top: 30px;
-            height: 3.2em !important;
+            text-align: center;
+        }}
+        .btn-sair-link:hover {{
+            background-color: #A00000;
+            border: 2px solid white;
         }}
     </style>
 """, unsafe_allow_html=True)
@@ -88,21 +103,17 @@ def gerar_prova_excel(nome_aluno):
     for i in range(1, 31):
         item = random.choice(itens)
         qtd = random.randint(5, 50)
-        preco = round(random.uniform(20, 300), 2)
-        dados.append({"ID": i, "Produto": item, "Quantidade": qtd, "Preço Unitário": preco, "Venda Total": 0, "Status": ""})
+        p_u = round(random.uniform(20, 300), 2)
+        dados.append({"ID": i, "Produto": item, "Quantidade": qtd, "Preço Unitário": p_u, "Venda Total": 0, "Status": ""})
     df = pd.DataFrame(dados)
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         df.to_excel(writer, sheet_name='Base_de_Dados', index=False)
         instrucoes = [
-            ["AVALIAÇÃO PRÁTICA DE EXCEL"],
-            [f"Nome do Aluno: {nome_aluno}"],
-            [""],
-            ["1. Calcule a coluna 'Venda Total' (Quantidade x Preço Unitário)"],
-            ["2. Na coluna 'Status', use a função SE:"],
-            ["   - Se Venda Total for >= 500, escreva 'META'"],
-            ["   - Caso contrário, escreva 'REVISAR'"],
-            ["3. Crie uma macro de formatação e salve como .xlsm"]
+            ["AVALIAÇÃO PRÁTICA DE EXCEL"], [f"Nome do Aluno: {nome_aluno}"], [""],
+            ["INSTRUÇÕES:"], ["1. Calcule 'Venda Total' (Quantidade x Preço Unitário)"],
+            ["2. Na coluna 'Status', use a função SE (>= 500 META, senão REVISAR)"],
+            ["3. Salve o arquivo final como .xlsm (habilitado para macros)"]
         ]
         pd.DataFrame(instrucoes).to_excel(writer, sheet_name='Instrucoes', index=False, header=False)
     return output.getvalue()
@@ -121,7 +132,7 @@ def calcular_nota(arquivo_bytes):
             macro = 2.0 if wb.vba_archive else 0.0
         except: macro = 0.0
         nota = round(((ac_v / total) * 4) + ((ac_s / total) * 4) + macro, 1)
-        return nota, f"Vendas: {ac_v}/{total} | Status: {ac_s}/{total} | Macro: {macro}"
+        return nota, f"Cálculos: {ac_v}/{total} | Status: {ac_s}/{total} | Macro: {macro}"
     except Exception as e: return 0, f"Erro: {str(e)}"
 
 # --- INICIALIZAÇÃO ---
@@ -137,7 +148,7 @@ with c3: st.image("Imagem para o app avaliação Excel_RicardoItmaster.png", wid
 if st.session_state.perfil is None:
     st.markdown("<br>", unsafe_allow_html=True)
     st.title("Sistema de Avaliação Técnica")
-    st.write("### Selecione seu perfil de acesso:")
+    st.write("### Bem-vindo! Selecione seu perfil de acesso:")
     
     # DISPOSIÇÃO HORIZONTAL
     _, col1, col2, _ = st.columns([0.8, 1, 1, 0.8])
@@ -148,87 +159,60 @@ if st.session_state.perfil is None:
         if st.button("👨‍🏫 PROFESSOR / GESTOR"):
             st.session_state.perfil = "admin"; st.rerun()
     
-    # SAIR CENTRALIZADO ABAIXO
+    # SAIR COM LINK PARA SENAI GUARULHOS
     _, col_sair, _ = st.columns([1.5, 1, 1.5])
     with col_sair:
-        st.markdown('<div class="btn-sair-container">', unsafe_allow_html=True)
-        if st.button("❌ SAIR DO SISTEMA"):
-            for k in list(st.session_state.keys()): del st.session_state[k]
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown(
+            '<a href="https://guarulhos.sp.senai.br/" target="_self" class="btn-sair-link">❌ SAIR DO SISTEMA</a>', 
+            unsafe_allow_html=True
+        )
 
 # --- ÁREA DO ALUNO ---
 elif st.session_state.perfil == "aluno":
-    if st.button("⬅️ Menu Principal"): 
-        st.session_state.perfil = None
-        st.rerun()
-    
+    if st.button("⬅️ Voltar"): st.session_state.perfil = None; st.rerun()
     if st.session_state.etapa_aluno == 'login':
-        st.subheader("Identificação do Estudante")
+        st.subheader("Identificação")
         with st.form("f_aluno"):
-            n = st.text_input("Nome Completo").strip()
-            t = st.text_input("Turma").strip().upper()
-            e = st.text_input("E-mail para Receber Cópia").strip()
+            n, t, e = st.text_input("Nome"), st.text_input("Turma").upper(), st.text_input("E-mail")
             if st.form_submit_button("Gerar Minha Prova"):
                 if n and t and e:
-                    st.session_state.aluno_dados = {"nome": n, "turma": t, "email": e}
-                    st.session_state.excel_data = gerar_prova_excel(n)
+                    st.session_state.aluno_dados, st.session_state.excel_data = {"nome":n,"turma":t,"email":e}, gerar_prova_excel(n)
                     st.session_state.etapa_aluno = 'prova'; st.rerun()
-                else: st.warning("Preencha todos os campos.")
-
     elif st.session_state.etapa_aluno == 'prova':
-        st.write(f"### Olá, {st.session_state.aluno_dados['nome']}!")
-        nome_esp = f"Avaliacao_{st.session_state.aluno_dados['nome'].replace(' ', '_')}"
-        st.info(f"Baixe o arquivo, resolva e envie com o nome exato: **{nome_esp}**")
-        st.download_button("📥 Baixar Planilha de Prova", st.session_state.excel_data, f"{nome_esp}.xlsx")
-        st.divider()
-        up = st.file_uploader("Upload da Prova (.xlsx ou .xlsm)", type=['xlsx', 'xlsm'], accept_multiple_files=True)
-        if st.button("🚀 Finalizar Entrega"):
-            if up:
-                validos = [f for f in up if f.name.split('.')[0].lower() == nome_esp.lower()]
-                if not validos: st.error(f"O nome do arquivo deve ser: {nome_esp}")
-                else:
-                    arq = next((f for f in validos if f.name.endswith('xlsm')), validos[0])
-                    nota, info = calcular_nota(arq)
-                    pd.DataFrame([[st.session_state.aluno_dados['nome'], st.session_state.aluno_dados['turma'], nota]], columns=['Aluno', 'Turma', 'Nota']).to_csv("db_notas.csv", mode='a', header=not os.path.exists("db_notas.csv"), index=False)
-                    enviar_email(EMAIL_PROFESSOR, f"Prova: {st.session_state.aluno_dados['nome']}", f"Nota: {nota}\n{info}", [(f.getvalue(), f.name) for f in up])
-                    st.success(f"Prova enviada! Nota: {nota}"); st.balloons()
+        nome_e = f"Avaliacao_{st.session_state.aluno_dados['nome'].replace(' ', '_')}"
+        st.info(f"Envie o arquivo como: {nome_e}")
+        st.download_button("📥 Baixar Prova", st.session_state.excel_data, f"{nome_e}.xlsx")
+        up = st.file_uploader("Upload", type=['xlsx', 'xlsm'], accept_multiple_files=True)
+        if st.button("🚀 Enviar Prova"):
+            validos = [f for f in up if f.name.split('.')[0].lower() == nome_e.lower()]
+            if validos:
+                arq = next((f for f in validos if f.name.endswith('xlsm')), validos[0])
+                nota, info = calcular_nota(arq)
+                pd.DataFrame([[st.session_state.aluno_dados['nome'], st.session_state.aluno_dados['turma'], nota]], columns=['Aluno','Turma','Nota']).to_csv("db_notas.csv", mode='a', header=not os.path.exists("db_notas.csv"), index=False)
+                enviar_email(EMAIL_PROFESSOR, f"Prova - {st.session_state.aluno_dados['nome']}", f"Nota: {nota}", [(f.getvalue(), f.name) for f in up])
+                st.success(f"Enviado! Nota: {nota}"); st.balloons()
 
 # --- ÁREA ADMINISTRATIVA ---
 elif st.session_state.perfil == "admin":
-    if st.button("⬅️ Menu Principal"): st.session_state.perfil = None; st.rerun()
-    t1, t2, t3 = st.tabs(["📊 Notas das Turmas", "📝 Cadastro de Professores", "🛡️ Área ADM"])
-    
+    if st.button("⬅️ Voltar"): st.session_state.perfil = None; st.rerun()
+    t1, t2, t3 = st.tabs(["📊 Notas", "📝 Professores", "🛡️ Área ADM"])
     with t1:
-        st.subheader("Consulta de Notas")
         if os.path.exists("professores.csv"):
-            np = st.text_input("Nome Cadastrado").strip()
-            sp = st.text_input("Senha", type="password")
-            if st.button("Acessar Dados"):
+            np, sp = st.text_input("Professor"), st.text_input("Senha", type="password")
+            if st.button("Consultar"):
                 dfp = pd.read_csv("professores.csv")
                 auth = dfp[(dfp['Professor'].str.lower() == np.lower()) & (dfp['Senha'] == str(sp))]
-                if not auth.empty:
-                    if os.path.exists("db_notas.csv"):
-                        db = pd.read_csv("db_notas.csv")
-                        st.dataframe(db[db['Turma'].isin(auth['Turma'].unique())], use_container_width=True)
-                    else: st.info("Nenhuma nota registrada.")
-                else: st.error("Acesso Negado.")
-
+                if not auth.empty and os.path.exists("db_notas.csv"):
+                    db = pd.read_csv("db_notas.csv")
+                    st.dataframe(db[db['Turma'].isin(auth['Turma'].unique())], use_container_width=True)
     with t2:
-        st.subheader("Novo Professor")
         with st.form("c_p"):
-            new_n = st.text_input("Nome")
-            new_t = st.text_input("Turma").upper()
-            new_s = st.text_input("Senha", type="password")
-            if st.form_submit_button("Salvar Cadastro"):
-                pd.DataFrame([[new_n, new_t, new_s]], columns=['Professor','Turma','Senha']).to_csv("professores.csv", mode='a', header=not os.path.exists("professores.csv"), index=False)
-                st.success("Cadastrado com sucesso!")
-
+            n_p, t_p, s_p = st.text_input("Nome"), st.text_input("Turma"), st.text_input("Senha")
+            if st.form_submit_button("Cadastrar"):
+                pd.DataFrame([[n_p, t_p, s_p]], columns=['Professor','Turma','Senha']).to_csv("professores.csv", mode='a', header=not os.path.exists("professores.csv"), index=False)
+                st.success("OK!")
     with t3:
-        st.subheader("Gerência Mestra")
         if st.text_input("Senha ADM", type="password") == "Celina2610$$":
             if os.path.exists("db_notas.csv"):
                 st.dataframe(pd.read_csv("db_notas.csv"), use_container_width=True)
-                if st.button("Limpar Banco de Dados"):
-                    os.remove("db_notas.csv"); st.rerun()
-            else: st.info("Banco vazio.")
+                if st.button("Limpar Dados"): os.remove("db_notas.csv"); st.rerun()
