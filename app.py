@@ -39,6 +39,7 @@ st.markdown(f"""
             border: 1px solid {COR_DOURADO};
             height: 3em;
             font-weight: bold;
+            width: 100%; /* Adicionado para garantir preenchimento total da coluna */
         }}
         .stButton>button:hover {{ border: 2px solid {COR_TEXTO}; color: {COR_DOURADO}; }}
         .stDownloadButton>button {{ 
@@ -115,13 +116,12 @@ with col_logo_r:
 # --- LÓGICA DE NAVEGAÇÃO ---
 if 'perfil' not in st.session_state: st.session_state.perfil = None
 
-# --- TELA DE SELEÇÃO DE PERFIL ---
+# --- TELA DE SELEÇÃO DE PERFIL CENTRALIZADA ---
 if st.session_state.perfil is None:
     st.title("Sistema de Avaliação Técnica")
     st.write("### Bem-vindo! Selecione seu perfil de acesso:")
-    
-    # AJUSTE DE CENTRALIZAÇÃO DOS BOTÕES
-    _, col1, col2, _ = st.columns([1, 1.2, 1.2, 1])
+    # Alteração: Uso de 4 colunas para centralizar os botões
+    _, col1, col2, _ = st.columns([1, 1, 1, 1])
     with col1:
         if st.button("🎓 SOU ALUNO"):
             st.session_state.perfil = "aluno"; st.rerun()
@@ -152,3 +152,70 @@ elif st.session_state.perfil == "aluno":
         st.subheader(f"Área de Entrega: {st.session_state.aluno_dados['nome']}")
         nome_arquivo_esperado = f"Avaliacao_{st.session_state.aluno_dados['nome'].replace(' ', '_')}"
         st.download_button("📥 Baixar Planilha de Avaliação", st.session_state.excel_data, f"{nome_arquivo_esperado}.xlsx")
+        
+        st.divider()
+        up = st.file_uploader("Upload da Planilha Respondida", type=['xls', 'xlsx', 'xlsm'], accept_multiple_files=True)
+        
+        if st.button("🚀 Enviar para Correção"):
+            if up:
+                # Validação robusta (Case insensitive e remove espaços extras)
+                validos = []
+                for f in up:
+                    nome_enviado = f.name.split('.')[0].lower().strip()
+                    if nome_enviado == nome_arquivo_esperado.lower().strip():
+                        validos.append(f)
+                
+                if not validos:
+                    st.error(f"Erro: O arquivo enviado não pertence a este aluno. O nome do arquivo deve ser exatamente: {nome_arquivo_esperado}")
+                else:
+                    arq = next((f for f in validos if f.name.endswith('xlsm')), validos[0])
+                    nota, feedback = calcular_nota(arq)
+                    pd.DataFrame([[st.session_state.aluno_dados['nome'], st.session_state.aluno_dados['turma'], nota]], columns=['Aluno', 'Turma', 'Nota']).to_csv("db_notas.csv", mode='a', header=not os.path.exists("db_notas.csv"), index=False)
+                    enviar_email(EMAIL_PROFESSOR, f"PROVA: {st.session_state.aluno_dados['nome']}", f"Nota: {nota}\n{feedback}", [(f.getvalue(), f.name) for f in validos])
+                    st.success(f"Enviado com sucesso! Nota: {nota}"); st.balloons()
+
+# --- ÁREA ADMINISTRATIVA ---
+elif st.session_state.perfil == "admin":
+    if st.button("⬅️ Voltar"):
+        st.session_state.clear(); st.rerun()
+
+    tabs = st.tabs(["Acesso Professor", "Novo Cadastro", "Gerência (ADM)"])
+
+    with tabs[0]: # Login Professor (Corrigido)
+        if not st.session_state.get('prof_autenticado', False):
+            with st.form("login_prof_v2"):
+                n_prof = st.text_input("Nome do Professor").strip()
+                s_prof = st.text_input("Senha", type="password")
+                if st.form_submit_button("Validar Cadastro"):
+                    if os.path.exists("professores.csv"):
+                        dfp = pd.read_csv("professores.csv")
+                        match = dfp[(dfp['Professor'].str.lower() == n_prof.lower()) & (dfp['Senha'] == str(s_prof))]
+                        if not match.empty:
+                            st.session_state.prof_autenticado = True
+                            st.session_state.prof_nome_logado = n_prof
+                            st.session_state.turmas_disponiveis = match['Turma'].unique().tolist()
+                            st.rerun()
+                    st.error("Professor não cadastrado ou senha incorreta.")
+        else:
+            st.write(f"### Olá, Prof. {st.session_state.prof_nome_logado}")
+            turma_sel = st.selectbox("Selecione a Turma que deseja acessar:", st.session_state.turmas_disponiveis)
+            if os.path.exists("db_notas.csv"):
+                dfn = pd.read_csv("db_notas.csv")
+                st.dataframe(dfn[dfn['Turma'] == turma_sel], use_container_width=True)
+            if st.button("Sair da Sessão"): st.session_state.clear(); st.rerun()
+
+    with tabs[1]: # Cadastro
+        with st.form("cad_p"):
+            np = st.text_input("Nome Completo do Professor").strip()
+            tp = st.text_input("Turma para Vincular").strip().upper()
+            sp = st.text_input("Definir Senha de Acesso", type="password")
+            if st.form_submit_button("Cadastrar Docente"):
+                if np and tp and sp:
+                    pd.DataFrame([[np, tp, sp]], columns=['Professor','Turma','Senha']).to_csv("professores.csv", mode='a', header=not os.path.exists("professores.csv"), index=False)
+                    st.success(f"Professor {np} cadastrado na turma {tp}!"); st.balloons()
+
+    with tabs[2]: # ADM Central
+        if not st.session_state.get('adm_logado', False):
+            with st.form("l_adm"):
+                if st.form_submit_button("Acessar Painel Mestre") and st.text_input("Senha Mestra", type="password") == "Celina2610$$":
+                    st.session
