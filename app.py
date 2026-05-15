@@ -50,6 +50,11 @@ st.markdown(f"""
         }}
         .stTextInput input {{ background-color: #1A1A1A !important; color: white !important; border: 1px solid {COR_AZUL_BMW} !important; }}
         [data-testid="stHorizontalBlock"] {{ align-items: center !important; }}
+        /* Estilo específico para o botão de sair ficar vermelho/destacado */
+        .btn-sair>div>button {{
+            background-color: #8B0000 !important;
+            border: 1px solid white !important;
+        }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -126,8 +131,17 @@ if st.session_state.perfil is None:
     with col2:
         if st.button("👨‍🏫 SOU PROFESSOR / GESTOR"):
             st.session_state.perfil = "admin"; st.rerun()
+    
+    # Adição do botão de Sair na tela principal
+    _, col_sair, _ = st.columns([1.5, 1, 1.5])
+    with col_sair:
+        st.markdown('<div class="btn-sair">', unsafe_allow_html=True)
+        if st.button("❌ Sair do Sistema"):
+            st.session_state.clear()
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
 
-# --- ALUNO ---
+# --- ÁREA DO ALUNO ---
 elif st.session_state.perfil == "aluno":
     if 'etapa_aluno' not in st.session_state: st.session_state.etapa_aluno = 'login'
     if st.button("⬅️ Voltar"):
@@ -155,7 +169,7 @@ elif st.session_state.perfil == "aluno":
             if up:
                 validos = [f for f in up if f.name.split('.')[0].lower().strip() == nome_arquivo_esperado.lower().strip()]
                 if not validos:
-                    st.error(f"O arquivo enviado não pertence a este aluno ou o nome foi alterado. Use: {nome_arquivo_esperado}")
+                    st.error(f"Erro: Arquivo incorreto. Use: {nome_arquivo_esperado}")
                 else:
                     arq = next((f for f in validos if f.name.endswith('xlsm')), validos[0])
                     nota, feedback = calcular_nota(arq)
@@ -163,7 +177,7 @@ elif st.session_state.perfil == "aluno":
                     enviar_email(EMAIL_PROFESSOR, f"PROVA: {st.session_state.aluno_dados['nome']}", f"Nota: {nota}\n{feedback}", [(f.getvalue(), f.name) for f in validos])
                     st.success(f"Enviado com sucesso! Nota: {nota}"); st.balloons()
 
-# --- PROFESSOR / ADM ---
+# --- ÁREA ADMINISTRATIVA ---
 elif st.session_state.perfil == "admin":
     if st.button("⬅️ Voltar"):
         st.session_state.clear(); st.rerun()
@@ -184,7 +198,7 @@ elif st.session_state.perfil == "admin":
                             st.session_state.prof_nome_logado = n_prof
                             st.session_state.turmas_disponiveis = match['Turma'].unique().tolist()
                             st.rerun()
-                    st.error("Professor não cadastrado ou senha incorreta.")
+                    st.error("Dados incorretos.")
         else:
             st.write(f"### Olá, Prof. {st.session_state.prof_nome_logado}")
             turma_sel = st.selectbox("Selecione a Turma:", st.session_state.turmas_disponiveis)
@@ -200,18 +214,14 @@ elif st.session_state.perfil == "admin":
             sp = st.text_input("Senha", type="password")
             if st.form_submit_button("Cadastrar"):
                 pd.DataFrame([[np, tp, sp]], columns=['Professor','Turma','Senha']).to_csv("professores.csv", mode='a', header=not os.path.exists("professores.csv"), index=False)
-                st.success("Cadastrado!")
+                st.success("Cadastrado com sucesso!")
 
     with tabs[2]:
         if not st.session_state.get('adm_logado', False):
             with st.form("l_adm"):
-                senha_mestra = st.text_input("Senha Mestra", type="password")
-                if st.form_submit_button("Acessar Painel Mestre"):
-                    if senha_mestra == "Celina2610$$":
-                        st.session_state.adm_logado = True; st.rerun()
-                    else: st.error("Acesso restrito.")
+                if st.form_submit_button("Acessar Painel Mestre") and st.text_input("Senha Mestra", type="password") == "Celina2610$$":
+                    st.session_state.adm_logado = True; st.rerun()
         else:
             st.write("### Relatório Geral")
             if os.path.exists("db_notas.csv"): st.dataframe(pd.read_csv("db_notas.csv"), use_container_width=True)
-            # CORREÇÃO AQUI: st.session_state em vez de st.session
             if st.button("Sair da Gerência"): st.session_state.clear(); st.rerun()
