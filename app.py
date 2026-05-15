@@ -29,17 +29,9 @@ st.set_page_config(page_title="Portal de Avaliação Excel", layout="wide")
 # --- ESTILIZAÇÃO CSS ---
 st.markdown(f"""
     <style>
-        .stApp {{ 
-            background-color: {COR_PRETO_BRILHANTE} !important; 
-        }}
-        h1, h2, h3 {{ 
-            color: {COR_DOURADO} !important; 
-            font-weight: bold; 
-            text-align: center; 
-        }}
-        label, p, span {{ 
-            color: {COR_TEXTO} !important; 
-        }}
+        .stApp {{ background-color: {COR_PRETO_BRILHANTE} !important; }}
+        h1, h2, h3 {{ color: {COR_DOURADO} !important; font-weight: bold; text-align: center; }}
+        label, p, span {{ color: {COR_TEXTO} !important; }}
         .stButton>button {{ 
             color: {COR_TEXTO}; 
             background-color: {COR_AZUL_BMW}; 
@@ -50,26 +42,15 @@ st.markdown(f"""
             width: 100%;
             margin-top: 10px;
         }}
-        .stButton>button:hover {{ 
-            border: 2px solid {COR_TEXTO}; 
-            color: {COR_DOURADO}; 
-        }}
+        .stButton>button:hover {{ border: 2px solid {COR_TEXTO}; color: {COR_DOURADO}; }}
         .stDownloadButton>button {{ 
             color: {COR_PRETO_BRILHANTE} !important; 
             background-color: {COR_DOURADO} !important; 
             font-weight: bold; 
             width: 100%; 
         }}
-        .stTextInput input {{ 
-            background-color: #1A1A1A !important; 
-            color: white !important; 
-            border: 1px solid {COR_AZUL_BMW} !important; 
-        }}
-        [data-testid="stHorizontalBlock"] {{ 
-            align-items: center !important; 
-        }}
-        
-        /* Botão Sair com estilo diferenciado */
+        .stTextInput input {{ background-color: #1A1A1A !important; color: white !important; border: 1px solid {COR_AZUL_BMW} !important; }}
+        [data-testid="stHorizontalBlock"] {{ align-items: center !important; }}
         .btn-sair-container button {{
             background-color: #7B0000 !important;
             border: 1px solid #FFFFFF !important;
@@ -109,28 +90,16 @@ def gerar_prova_excel(nome_aluno):
         item = random.choice(itens)
         qtd = random.randint(5, 50)
         preco = round(random.uniform(20, 300), 2)
-        dados.append({
-            "ID": i, 
-            "Produto": item, 
-            "Quantidade": qtd, 
-            "Preço Unitário": preco, 
-            "Venda Total": 0, 
-            "Status": ""
-        })
+        dados.append({"ID": i, "Produto": item, "Quantidade": qtd, "Preço Unitário": preco, "Venda Total": 0, "Status": ""})
     
     df = pd.DataFrame(dados)
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         df.to_excel(writer, sheet_name='Base_de_Dados', index=False)
         instrucoes = [
-            ["AVALIAÇÃO PRÁTICA DE EXCEL"],
-            [f"Nome do Aluno: {nome_aluno}"],
-            [""],
-            ["INSTRUÇÕES:"],
+            ["AVALIAÇÃO PRÁTICA DE EXCEL"], [f"Nome do Aluno: {nome_aluno}"], [""], ["INSTRUÇÕES:"],
             ["1. Calcule a coluna 'Venda Total' (Quantidade x Preço Unitário)"],
-            ["2. Na coluna 'Status', use a função SE:"],
-            ["   - Se Venda Total for >= 500, escreva 'META'"],
-            ["   - Caso contrário, escreva 'REVISAR'"],
+            ["2. Na coluna 'Status', use a função SE (>= 500 META, caso contrário REVISAR)"],
             ["3. Crie uma macro simples de formatação e salve o arquivo como .xlsm"]
         ]
         pd.DataFrame(instrucoes).to_excel(writer, sheet_name='Instrucoes', index=False, header=False)
@@ -142,68 +111,45 @@ def calcular_nota(arquivo_bytes):
         acertos_venda = 0
         acertos_status = 0
         total_linhas = len(df)
-        
         for _, row in df.iterrows():
             calc_venda = round(float(row['Quantidade'] * row['Preço Unitário']), 2)
-            if round(float(row['Venda Total']), 2) == calc_venda:
-                acertos_venda += 1
-            
-            status_esperado = "META" if calc_venda >= 500 else "REVISAR"
-            if str(row['Status']).strip().upper() == status_esperado:
-                acertos_status += 1
-        
+            if round(float(row['Venda Total']), 2) == calc_venda: acertos_venda += 1
+            status_esp = "META" if calc_venda >= 500 else "REVISAR"
+            if str(row['Status']).strip().upper() == status_esp: acertos_status += 1
         try:
             wb = load_workbook(arquivo_bytes, keep_vba=True)
             tem_macro = 2.0 if wb.vba_archive else 0.0
-        except:
-            tem_macro = 0.0
-            
-        nota_venda = (acertos_venda / total_linhas) * 4
-        nota_status = (acertos_status / total_linhas) * 4
-        nota_final = round(nota_venda + nota_status + tem_macro, 1)
-        
-        detalhes = f"Vendas: {acertos_venda}/{total_linhas} | Status: {acertos_status}/{total_linhas} | Macro: {tem_macro}"
-        return nota_final, detalhes
+        except: tem_macro = 0.0
+        nota_final = round(((acertos_venda / total_linhas) * 4) + ((acertos_status / total_linhas) * 4) + tem_macro, 1)
+        return nota_final, f"Vendas: {acertos_venda} | Status: {acertos_status} | Macro: {tem_macro}"
     except Exception as e:
-        return 0, f"Erro na correção: {str(e)}"
+        return 0, f"Erro: {str(e)}"
 
-# --- INICIALIZAÇÃO DE ESTADO ---
-if 'perfil' not in st.session_state:
-    st.session_state.perfil = None
-if 'etapa_aluno' not in st.session_state:
-    st.session_state.etapa_aluno = 'login'
+# --- INICIALIZAÇÃO ---
+if 'perfil' not in st.session_state: st.session_state.perfil = None
+if 'etapa_aluno' not in st.session_state: st.session_state.etapa_aluno = 'login'
 
 # --- CABEÇALHO ---
 col_l, col_c, col_r = st.columns([1, 2, 1])
-with col_l:
-    st.image("https://upload.wikimedia.org/wikipedia/commons/8/8c/SENAI_S%C3%A3o_Paulo_logo.png", width=150)
-with col_r:
-    st.image("Imagem para o app avaliação Excel_RicardoItmaster.png", width=220)
+with col_l: st.image("https://upload.wikimedia.org/wikipedia/commons/8/8c/SENAI_S%C3%A3o_Paulo_logo.png", width=150)
+with col_r: st.image("Imagem para o app avaliação Excel_RicardoItmaster.png", width=220)
 
-# --- FLUXO DE TELAS ---
-
+# --- FLUXO PRINCIPAL ---
 if st.session_state.perfil is None:
     st.markdown("<br><br>", unsafe_allow_html=True)
     st.title("Sistema de Avaliação Técnica")
     st.write("### Olá! Por favor, escolha uma opção para continuar:")
-    
-    # Centralização dos três botões principais
     _, col_btn, _ = st.columns([1.3, 1, 1.3])
-    
     with col_btn:
         if st.button("🎓 ACESSO DO ALUNO"):
             st.session_state.perfil = "aluno"
             st.rerun()
-            
         if st.button("👨‍🏫 PAINEL DO PROFESSOR"):
             st.session_state.perfil = "admin"
             st.rerun()
-            
         st.markdown('<div class="btn-sair-container">', unsafe_allow_html=True)
         if st.button("❌ FECHAR / SAIR DO SISTEMA"):
-            # Limpeza absoluta da sessão para garantir que o botão "faça algo"
-            for key in list(st.session_state.keys()):
-                del st.session_state[key]
+            for key in list(st.session_state.keys()): del st.session_state[key]
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -211,33 +157,64 @@ elif st.session_state.perfil == "aluno":
     if st.button("⬅️ Voltar ao Menu Principal"):
         st.session_state.perfil = None
         st.rerun()
-
     if st.session_state.etapa_aluno == 'login':
         st.subheader("Identificação do Estudante")
         with st.form("form_identificacao"):
             nome = st.text_input("Nome Completo").strip()
             turma = st.text_input("Sua Turma").strip().upper()
             email = st.text_input("Seu E-mail").strip()
-            
             if st.form_submit_button("Gerar Minha Prova"):
                 if nome and turma and email:
                     st.session_state.aluno_dados = {"nome": nome, "turma": turma, "email": email}
                     st.session_state.excel_data = gerar_prova_excel(nome)
                     st.session_state.etapa_aluno = 'prova'
                     st.rerun()
-                else:
-                    st.warning("Preencha todos os campos corretamente.")
-
     elif st.session_state.etapa_aluno == 'prova':
         st.write(f"### Bem-vindo, {st.session_state.aluno_dados['nome']}!")
-        nome_esperado = f"Avaliacao_{st.session_state.aluno_dados['nome'].replace(' ', '_')}"
-        
-        st.info(f"Baixe o arquivo abaixo, resolva os desafios e envie-o com o nome: **{nome_esperado}**")
-        st.download_button("📥 Baixar Planilha de Prova", st.session_state.excel_data, f"{nome_esperado}.xlsx")
-        
+        nome_esp = f"Avaliacao_{st.session_state.aluno_dados['nome'].replace(' ', '_')}"
+        st.info(f"Resolva os desafios e envie o arquivo como: **{nome_esp}**")
+        st.download_button("📥 Baixar Planilha", st.session_state.excel_data, f"{nome_esp}.xlsx")
         st.divider()
-        up_files = st.file_uploader("Envie sua prova respondida (.xlsx ou .xlsm)", type=['xlsx', 'xlsm'], accept_multiple_files=True)
-        
+        up_files = st.file_uploader("Envie sua prova (.xlsx ou .xlsm)", type=['xlsx', 'xlsm'], accept_multiple_files=True)
         if st.button("🚀 Finalizar e Enviar"):
             if up_files:
-                validos = [f for f in up_files if f.name.split('.')[0].lower
+                validos = [f for f in up_files if f.name.split('.')[0].lower() == nome_esp.lower()]
+                if not validos:
+                    st.error(f"Renomeie o arquivo para: {nome_esp}")
+                else:
+                    arq_final = next((f for f in validos if f.name.endswith('xlsm')), validos[0])
+                    nota, info = calcular_nota(arq_final)
+                    pd.DataFrame([[st.session_state.aluno_dados['nome'], st.session_state.aluno_dados['turma'], nota]], columns=['Aluno', 'Turma', 'Nota']).to_csv("db_notas.csv", mode='a', header=not os.path.exists("db_notas.csv"), index=False)
+                    enviar_email(EMAIL_PROFESSOR, f"Prova - {st.session_state.aluno_dados['nome']}", f"Nota: {nota}\nResumo: {info}", [(f.getvalue(), f.name) for f in up_files])
+                    st.success(f"Enviada! Nota: {nota}"); st.balloons()
+
+elif st.session_state.perfil == "admin":
+    if st.button("⬅️ Voltar ao Menu Principal"):
+        st.session_state.perfil = None
+        st.rerun()
+    tabs = st.tabs(["📊 Notas das Turmas", "📝 Cadastro de Professores", "🛡️ Área da Gerência"])
+    with tabs[0]:
+        st.subheader("Consulta de Resultados")
+        if os.path.exists("professores.csv"):
+            df_p = pd.read_csv("professores.csv")
+            n_p = st.text_input("Nome do Professor").strip()
+            s_p = st.text_input("Senha", type="password")
+            if st.button("Ver Minhas Turmas"):
+                auth = df_p[(df_p['Professor'].str.lower() == n_p.lower()) & (df_p['Senha'] == str(s_p))]
+                if not auth.empty:
+                    turmas = auth['Turma'].unique()
+                    if os.path.exists("db_notas.csv"):
+                        all_n = pd.read_csv("db_notas.csv")
+                        st.dataframe(all_n[all_n['Turma'].isin(turmas)], use_container_width=True)
+                else: st.error("Acesso negado.")
+    with tabs[1]:
+        with st.form("cad_p"):
+            np, tp, sp = st.text_input("Nome"), st.text_input("Turma").upper(), st.text_input("Senha", type="password")
+            if st.form_submit_button("Cadastrar"):
+                pd.DataFrame([[np, tp, sp]], columns=['Professor', 'Turma', 'Senha']).to_csv("professores.csv", mode='a', header=not os.path.exists("professores.csv"), index=False)
+                st.success("Cadastrado!")
+    with tabs[2]:
+        if st.text_input("Senha Mestra", type="password") == "Celina2610$$":
+            if os.path.exists("db_notas.csv"):
+                st.dataframe(pd.read_csv("db_notas.csv"), use_container_width=True)
+                if st.button("Limpar Dados"): os.remove("db_notas.csv"); st.rerun()
