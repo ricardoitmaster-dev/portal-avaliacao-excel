@@ -37,9 +37,8 @@ st.markdown(f"""
             background-color: {COR_AZUL_BMW}; 
             border-radius: 10px; 
             border: 1px solid {COR_DOURADO};
-            height: 3.5em;
+            height: 3em;
             font-weight: bold;
-            width: 100%;
         }}
         .stButton>button:hover {{ border: 2px solid {COR_TEXTO}; color: {COR_DOURADO}; }}
         .stDownloadButton>button {{ 
@@ -49,12 +48,8 @@ st.markdown(f"""
             width: 100%; 
         }}
         .stTextInput input {{ background-color: #1A1A1A !important; color: white !important; border: 1px solid {COR_AZUL_BMW} !important; }}
-        
-        /* Alinhamento Vertical das Logos e Centralização */
-        [data-testid="stHorizontalBlock"] {{ 
-            align-items: center !important; 
-            justify-content: center !important;
-        }}
+        /* Ajuste fino para alinhamento de imagens */
+        [data-testid="stHorizontalBlock"] {{ align-items: center !important; }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -110,7 +105,7 @@ def calcular_nota(arquivo_bytes):
         return nota, f"Cálculos: {pv}/{total} | Lógica SE: {ps}/{total} | Macro: {'Sim' if tem_macro > 0 else 'Não'}"
     except: return 0, "Erro na leitura do arquivo."
 
-# --- CABEÇALHO (LOGOS SIMÉTRICAS) ---
+# --- CABEÇALHO CENTRALIZADO (LOGOS) ---
 col_logo_l, col_centro, col_logo_r = st.columns([1, 2, 1])
 with col_logo_l:
     st.image("https://upload.wikimedia.org/wikipedia/commons/8/8c/SENAI_S%C3%A3o_Paulo_logo.png", width=120)
@@ -120,14 +115,13 @@ with col_logo_r:
 # --- LÓGICA DE NAVEGAÇÃO ---
 if 'perfil' not in st.session_state: st.session_state.perfil = None
 
-# --- TELA DE SELEÇÃO DE PERFIL CENTRALIZADA ---
+# --- TELA DE SELEÇÃO DE PERFIL ---
 if st.session_state.perfil is None:
-    st.markdown("<br>", unsafe_allow_html=True)
     st.title("Sistema de Avaliação Técnica")
     st.write("### Bem-vindo! Selecione seu perfil de acesso:")
     
-    # Grid para centralizar os botões no meio da página
-    _, col1, col2, _ = st.columns([1.5, 1, 1, 1.5])
+    # AJUSTE DE CENTRALIZAÇÃO DOS BOTÕES
+    _, col1, col2, _ = st.columns([1, 1.2, 1.2, 1])
     with col1:
         if st.button("🎓 SOU ALUNO"):
             st.session_state.perfil = "aluno"; st.rerun()
@@ -139,7 +133,7 @@ if st.session_state.perfil is None:
 elif st.session_state.perfil == "aluno":
     if 'etapa_aluno' not in st.session_state: st.session_state.etapa_aluno = 'login'
     
-    if st.button("⬅️ Voltar ao Início"):
+    if st.button("⬅️ Voltar"):
         st.session_state.clear(); st.rerun()
 
     if st.session_state.etapa_aluno == 'login':
@@ -156,6 +150,5 @@ elif st.session_state.perfil == "aluno":
 
     elif st.session_state.etapa_aluno == 'prova':
         st.subheader(f"Área de Entrega: {st.session_state.aluno_dados['nome']}")
-        # Nome padrão para verificação sem erros de espaço ou case
         nome_arquivo_esperado = f"Avaliacao_{st.session_state.aluno_dados['nome'].replace(' ', '_')}"
-        st.download_button("📥 Baixar Planilha de Avaliação", st.session_state.excel
+        st.download_button("📥 Baixar Planilha de Avaliação", st.session_state.excel_data, f"{nome_arquivo_esperado}.xlsx")
