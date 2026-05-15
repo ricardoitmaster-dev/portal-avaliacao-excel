@@ -169,7 +169,6 @@ elif st.session_state.etapa == 'prova':
     st.download_button("📥 1. Baixar Caderno de Questões", st.session_state.excel_data, st.session_state.nome_esperado)
     st.divider()
     
-    # Adicionada a opção de multiplos arquivos para cobrir envio do XLS/XLSX original e do XLSM com macros
     up_files = st.file_uploader("2. Enviar Solução (xls, xlsx ou xlsm)", type=['xls', 'xlsx', 'xlsm'], accept_multiple_files=True)
     
     if st.button("🚀 3. Submeter para Correção"):
@@ -181,12 +180,13 @@ elif st.session_state.etapa == 'prova':
             for f in up_files:
                 nome_enviado_base = f.name.split('.')[0]
                 if nome_enviado_base != nome_esperado_base:
-                    st.error(f"SISTEMA DE SEGURANÇA: O arquivo '{f.name}' está incorreto. Por favor, envie o arquivo correto contendo o seu nome: '{nome_esperado_base}'.")
+                    st.error(f"SISTEMA DE SEGURANÇA: O arquivo '{f.name}' está incorreto. Por favor, envie o arquivo que possui o seu nome: '{nome_esperado_base}'.")
                     arquivos_invalidos = True
                 else:
                     arquivos_validos.append(f)
             
             if not arquivos_invalidos and len(arquivos_validos) > 0:
+                # Prioriza o XLSM para correção se ele estiver presente
                 arquivo_para_avaliar = arquivos_validos[0]
                 for f in arquivos_validos:
                     if f.name.endswith('xlsm'):
@@ -199,7 +199,6 @@ elif st.session_state.etapa == 'prova':
                 novo_reg.to_csv("db_notas.csv", mode='a', header=not os.path.exists("db_notas.csv"), index=False)
                 
                 corpo = f"Aluno: {st.session_state.aluno['nome']}\nTurma: {st.session_state.aluno['turma']}\nNota: {nota}\n{feedback}\n\n{tutorial}"
-                
                 lista_anexos = [(f.getvalue(), f.name) for f in arquivos_validos]
                 
                 enviar_email(EMAIL_PROFESSOR, f"RESULTADO {nota}: {st.session_state.aluno['nome']}", corpo, lista_anexos)
@@ -213,7 +212,7 @@ elif st.session_state.etapa == 'prova':
         st.session_state.clear()
         st.rerun()
 
-# --- NOVO: PAINEL DE GESTÃO (PROFESSORES E ADM) ---
+# --- PAINEL DE GESTÃO ---
 st.divider()
 with st.expander("👤 Painel de Controle (Professores / Gerência)"):
     tabs = st.tabs(["Acesso Professor", "Novo Cadastro", "Gerência (ADM)"])
@@ -245,7 +244,6 @@ with st.expander("👤 Painel de Controle (Professores / Gerência)"):
 
     with tabs[0]: # Login Professor
         st.write("### Área do Docente")
-        
         if 'prof_logado' not in st.session_state:
             st.session_state.prof_logado = False
             st.session_state.prof_turma = ""
@@ -255,7 +253,6 @@ with st.expander("👤 Painel de Controle (Professores / Gerência)"):
                 l_turma = st.text_input("Sua Turma").strip().upper()
                 l_senha = st.text_input("Sua Senha", type="password")
                 submit_login = st.form_submit_button("Acessar Minha Turma")
-                
                 if submit_login:
                     if os.path.exists("professores.csv"):
                         profs = pd.read_csv("professores.csv")
@@ -264,28 +261,25 @@ with st.expander("👤 Painel de Controle (Professores / Gerência)"):
                             st.session_state.prof_turma = l_turma
                             st.rerun()
                         else:
-                            st.error("Acesso Negado. Verifique a identificação da turma e a senha.")
+                            st.error("Acesso Negado.")
                     else:
-                        st.error("Nenhum professor cadastrado no sistema ainda.")
+                        st.error("Nenhum professor cadastrado.")
         else:
-            st.success(f"Sessão Ativa - Gerenciando a Turma: {st.session_state.prof_turma}")
+            st.success(f"Sessão Ativa - Turma: {st.session_state.prof_turma}")
             if os.path.exists("db_notas.csv"):
                 notas = pd.read_csv("db_notas.csv")
                 t_data = notas[notas['Turma'] == st.session_state.prof_turma]
                 st.subheader(f"📊 Resultados - Turma {st.session_state.prof_turma}")
-                st.metric("Total de Alunos", len(t_data))
                 st.dataframe(t_data, use_container_width=True)
             else:
-                st.info("Nenhuma entrega registrada para sua turma até o momento.")
-                
-            if st.button("Sair / Encerrar Sessão do Professor"):
+                st.info("Nenhuma entrega registrada.")
+            if st.button("Sair da Sessão (Professor)"):
                 st.session_state.prof_logado = False
                 st.session_state.prof_turma = ""
                 st.rerun()
 
     with tabs[2]: # Gerência ADM
         st.write("### Visão Geral do Sistema")
-        
         if 'adm_logado' not in st.session_state:
             st.session_state.adm_logado = False
             
@@ -293,32 +287,22 @@ with st.expander("👤 Painel de Controle (Professores / Gerência)"):
             with st.form("form_login_adm", clear_on_submit=True):
                 m_senha = st.text_input("Senha de Gerência", type="password")
                 submit_adm = st.form_submit_button("Acessar Gerência")
-                
                 if submit_adm:
-                    if m_senha == "ricardoitmaster":
+                    if m_senha == "Celina2610$$":
                         st.session_state.adm_logado = True
                         st.rerun()
                     else:
-                        st.error("Senha de gerência incorreta.")
+                        st.error("Senha incorreta.")
         else:
             if os.path.exists("db_notas.csv"):
-                st.write("### Relatório Consolidado de Notas (Turmas e Alunos)")
                 df_notas = pd.read_csv("db_notas.csv")
-                
                 turmas = df_notas['Turma'].unique()
                 for t in turmas:
-                    with st.expander(f"📁 Turma: {t} ({len(df_notas[df_notas['Turma'] == t])} entregas)"):
+                    with st.expander(f"📁 Turma: {t} ({len(df_notas[df_notas['Turma'] == t])} alunos)"):
                         st.dataframe(df_notas[df_notas['Turma'] == t], use_container_width=True)
-                        
-                st.write("#### Base de Dados Completa")
-                st.dataframe(df_notas, use_container_width=True)
-            else:
-                st.info("Nenhum dado de notas disponível no momento.")
-                
             if os.path.exists("professores.csv"):
-                st.write("### Lista de Professores Ativos")
+                st.write("### Professores Ativos")
                 st.dataframe(pd.read_csv("professores.csv")[['Professor', 'Turma']], use_container_width=True)
-                
             if st.button("Sair da Gerência"):
                 st.session_state.adm_logado = False
                 st.rerun()
