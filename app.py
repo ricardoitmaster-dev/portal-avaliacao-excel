@@ -100,14 +100,12 @@ def enviar_email(destinatario, assunto, corpo, arquivos=None):
         return False
 
 def gerar_prova_excel(nome_aluno):
-    # Semente pseudo-aleatória baseada no nome para gerar dados exclusivos por estudante
     seed = int(hashlib.md5(nome_aluno.encode()).hexdigest(), 16) % 10000
     random.seed(seed)
     
     itens = ["Notebook", "Mouse", "Teclado", "Monitor", "Impressora", "Cabo HDMI", "SSD 480GB"]
     categorias = ["Informática", "Periféricos", "Periféricos", "Informática", "Periféricos", "Acessórios", "Hardware"]
     
-    # Tabela de Apoio para aplicação do PROCV
     df_apoio = pd.DataFrame({
         "ID_Prod": range(1, 8),
         "Produto": itens,
@@ -116,13 +114,12 @@ def gerar_prova_excel(nome_aluno):
     })
     
     dados = []
-    # Criação estrita dos 30 registros solicitados
     for i in range(1, 31):
         id_prod = random.randint(1, 7)
         qtd = random.randint(2, 15)
         dados.append({
             "Nº Pedido": i,
-            "Data Venda": "",  # Aluno deve preencher com ALEATORIOENTRE para datas
+            "Data Venda": "",  
             "ID_Produto": id_prod,
             "Produto (ProcV)": "",
             "Quantidade": qtd,
@@ -136,7 +133,6 @@ def gerar_prova_excel(nome_aluno):
         
     df = pd.DataFrame(dados)
     
-    # Aba Resumo para aplicação das fórmulas estatísticas e consolidadas
     df_resumo = pd.DataFrame({
         "Indicador Analítico": [
             "Faturamento Bruto Geral (SOMA)", 
@@ -169,7 +165,7 @@ def gerar_prova_excel(nome_aluno):
             ["3. MULTIPLICAÇÃO: Calcule o 'Subtotal' multiplicando a Quantidade pelo Preço Unitário."],
             ["4. DIVISÃO: Na 'Taxa Desconto %', defina um critério de divisão (ex: dividir a Quantidade por 100 para achar um percentual)."],
             ["5. PORCENTAGEM: No 'Valor Desconto R$', calcule a porcentagem aplicando a taxa sobre o Subtotal."],
-            ["6. SUBTRAÇÃO: O 'Total Líquido' deve ser calculado subtraindo o Desconto do Subtotal."],
+            ["6. SUBTRAÇÃO: O 'Total Líquido' deve ser calculated subtraindo o Desconto do Subtotal."],
             ["7. FUNÇÃO LÓGICA SE: No 'Status Meta', aplique a função SE (Se Total Líquido >= 1200 então 'META', caso contrário 'REVISAR')."],
             ["8. SOMA, SOMASE e CONT.SE: Preencha os campos vazios da aba 'Resumo_Gerencial' utilizando estritamente essas funções."],
             ["9. MACROS DE ORDENAÇÃO: Desenvolva 2 macros gravadas ou em VBA destinadas a ordenar os registros da base."],
@@ -191,7 +187,6 @@ def calcular_nota(arquivo_bytes, nome_aluno):
         total_testes = 0
         feedbacks = []
         
-        # Validação do preenchimento e consistência lógica dos 30 registros
         for index, row in df.iterrows():
             try:
                 id_p = row['ID_Produto']
@@ -199,19 +194,53 @@ def calcular_nota(arquivo_bytes, nome_aluno):
                 preco_ref = float(df_apoio[df_apoio['ID_Prod'] == id_p]['Preço Base'].values[0])
                 
                 # Teste PROCV
-                if pd.notna(row['Preço Unitário (ProcV)']) and abs(float(row['Preço Unitário (ProcV)']) - preco_ref) < 0.1:
-                    acertos += 1
                 total_testes += 1
+                try:
+                    if pd.notna(row['Preço Unitário (ProcV)']) and abs(float(row['Preço Unitário (ProcV)']) - preco_ref) < 0.1:
+                        acertos += 1
+                except:
+                    pass
                 
                 # Teste Multiplicação
                 sub_ref = qtd * preco_ref
-                if pd.notna(row['Subtotal (Multiplicação)']) and abs(float(row['Subtotal (Multiplicação)']) - sub_ref) < 0.1:
-                    acertos += 1
                 total_testes += 1
+                try:
+                    if pd.notna(row['Subtotal (Multiplicação)']) and abs(float(row['Subtotal (Multiplicação)']) - sub_ref) < 0.1:
+                        acertos += 1
+                except:
+                    pass
                 
                 # Teste Subtração e Porcentagem
                 desc_r = float(row['Valor Desconto R$ (Porcentagem)']) if pd.notna(row['Valor Desconto R$ (Porcentagem)']) else 0
                 tot_ref = sub_ref - desc_r
-                if pd.notna(row['Total Líquido (Subtração)']) and abs(float(row['Total Líquido (Subtração)']) - tot_ref) < 0.1:
-                    acertos += 1
                 total_testes += 1
+                try:
+                    if pd.notna(row['Total Líquido (Subtração)']) and abs(float(row['Total Líquido (Subtração)']) - tot_ref) < 0.1:
+                        acertos += 1
+                except:
+                    pass
+                
+                # Teste Função SE
+                se_ref = "META" if tot_ref >= 1200 else "REVISAR"
+                total_testes += 1
+                try:
+                    if str(row['Status Meta (SE)']).strip().upper() == se_ref:
+                        acertos += 1
+                except:
+                    pass
+            except:
+                pass
+                
+        pontos_formulas = (acertos / total_testes) * 4.0 if total_testes > 0 else 0.0
+        
+        try:
+            wb = load_workbook(arquivo_bytes, keep_vba=True)
+            
+            if wb.vba_archive:
+                pontos_macro = 2.0
+            else:
+                pontos_macro = 0.0
+                feedbacks.append("Arquivo não contém código VBA ou macros ativas (.xlsm ausente)")
+                
+            graficos_achados = 0
+            tabela
