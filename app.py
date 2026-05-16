@@ -159,7 +159,7 @@ def gerar_prova_excel(nome_aluno):
             ["AVALIAÇÃO PRÁTICA PROFISSIONAL DE EXCEL"],
             [f"Nome do Aluno(a): {nome_aluno}"],
             [""],
-            ["CRÍTÉRIOS E REQUISITOS OBRIGATÓRIOS DA PROVA:"],
+            ["CRITÉRIOS E REQUISITOS OBRIGATÓRIOS DA PROVA:"],
             ["1. DATAS COM ALEATORIOENTRE: Preencha a coluna 'Data Venda' utilizando =ALEATORIOENTRE() com números de série de datas deste ano."],
             ["2. BUSCA COM PROCV: Preencha as colunas 'Produto' e 'Preço Unitário' buscando os dados da aba 'Apoio_Matriz' pelo ID."],
             ["3. MULTIPLICAÇÃO: Calcule o 'Subtotal' multiplicando a Quantidade pelo Preço Unitário."],
@@ -180,6 +180,7 @@ def gerar_prova_excel(nome_aluno):
 
 def calcular_nota(arquivo_bytes, nome_aluno):
     try:
+        # Força a leitura das abas corretas criadas pelo sistema
         df = pd.read_excel(arquivo_bytes, sheet_name='Base_de_Dados', engine='openpyxl')
         df_apoio = pd.read_excel(arquivo_bytes, sheet_name='Apoio_Matriz', engine='openpyxl')
         
@@ -195,42 +196,44 @@ def calcular_nota(arquivo_bytes, nome_aluno):
                 
                 # Execução e incremento do bloco PROCV
                 total_testes += 1
-                if pd.notna(row['Preço Unitário (ProcV)']):
+                if pd.notna(row['Preço Unitário (ProcV)']) and str(row['Preço Unitário (ProcV)']).strip() != "":
                     if abs(float(row['Preço Unitário (ProcV)']) - preco_ref) < 0.1:
                         acertos += 1
                 
                 # Execução e incremento do bloco Multiplicação
                 sub_ref = qtd * preco_ref
                 total_testes += 1
-                if pd.notna(row['Subtotal (Multiplicação)']):
+                if pd.notna(row['Subtotal (Multiplicação)']) and str(row['Subtotal (Multiplicação)']).strip() != "":
                     if abs(float(row['Subtotal (Multiplicação)']) - sub_ref) < 0.1:
                         acertos += 1
                 
                 # Execução e incremento do bloco Porcentagem e Cálculo Líquido
-                desc_r = float(row['Valor Desconto R$ (Porcentagem)']) if pd.notna(row['Valor Desconto R$ (Porcentagem)']) else 0
+                desc_r = float(row['Valor Desconto R$ (Porcentagem)']) if (pd.notna(row['Valor Desconto R$ (Porcentagem)']) and str(row['Valor Desconto R$ (Porcentagem)']).strip() != "") else 0
                 tot_ref = sub_ref - desc_r
                 total_testes += 1
-                if pd.notna(row['Total Líquido (Subtração)']):
+                if pd.notna(row['Total Líquido (Subtração)']) and str(row['Total Líquido (Subtração)']).strip() != "":
                     if abs(float(row['Total Líquido (Subtração)']) - tot_ref) < 0.1:
                         acertos += 1
                 
                 # Execução e incremento do bloco da Função Lógica SE
                 se_ref = "META" if tot_ref >= 1200 else "REVISAR"
                 total_testes += 1
-                if pd.notna(row['Status Meta (SE)']):
+                if pd.notna(row['Status Meta (SE)']) and str(row['Status Meta (SE)']).strip() != "":
                     if str(row['Status Meta (SE)']).strip().upper() == se_ref:
                         acertos += 1
             except:
                 pass
                 
-        pontos_formulas = (acertos / total_testes) * 4.0 if total_testes > 0 else 0.0
+        # Proporção matemática de acertos mapeada de 0 a 40 pontos
+        pontos_formulas = (acertos / total_testes) * 40.0 if total_testes > 0 else 0.0
         
-        # Teste estrutural de macros, gráficos e tabelas via openpyxl
+        # Teste estrutural avançado via openpyxl
         try:
             wb = load_workbook(arquivo_bytes, keep_vba=True)
             
-            if wb.vba_archive:
-                pontos_macro = 2.0
+            # Validação Real de Macros (Exige extensão .xlsm legítima com dados VBA internos)
+            if wb.vba_archive and hasattr(st.session_state, 'aluno_arquivo_nome') and str(st.session_state.aluno_arquivo_nome).lower().endswith('.xlsm'):
+                pontos_macro = 20.0
             else:
                 pontos_macro = 0.0
                 feedbacks.append("Arquivo não contém código VBA ou macros ativas (.xlsm ausente)")
@@ -244,17 +247,19 @@ def calcular_nota(arquivo_bytes, nome_aluno):
                 if hasattr(planilha, '_pivots') and planilha._pivots:
                     tabela_dinamica_achada = True
                     
+            # Distribuição matemática de gráficos (Até 20 pontos)
             if graficos_achados >= 2:
-                pontos_graficos = 2.0
+                pontos_graficos = 20.0
             elif graficos_achados == 1:
-                pontos_graficos = 1.0
+                pontos_graficos = 10.0
                 feedbacks.append("Apenas 1 gráfico foi detectado na estrutura")
             else:
                 pontos_graficos = 0.0
                 feedbacks.append("Nenhum gráfico válido foi construído")
                 
+            # Distribuição matemática da Tabela Dinâmica (Até 20 pontos)
             if tabela_dinamica_achada:
-                pontos_dinamica = 2.0
+                pontos_dinamica = 20.0
             else:
                 pontos_dinamica = 0.0
                 feedbacks.append("A aba ou cache com a Tabela Dinâmica não foi localizada")
@@ -265,15 +270,16 @@ def calcular_nota(arquivo_bytes, nome_aluno):
             pontos_dinamica = 0.0
             feedbacks.append("Incapaz de extrair validações de objetos (verifique o formato do arquivo enviado)")
             
+        # Nota final calculada estritamente na escala de 0 a 100
         nota_final = round(pontos_formulas + pontos_macro + pontos_graficos + pontos_dinamica, 1)
-        detalhamento = f"Fórmulas/Matemática: {round(pontos_formulas, 1)}/4.0 | Macros/Botões: {pontos_macro}/2.0 | Gráficos: {pontos_graficos}/2.0 | Tabela Dinâmica: {pontos_dinamica}/2.0"
+        detalhamento = f"Fórmulas/Matemática: {round(pontos_formulas, 1)}/40.0 | Macros/Botões: {pontos_macro}/20.0 | Gráficos: {pontos_graficos}/20.0 | Tabela Dinâmica: {pontos_dinamica}/20.0"
         
         if feedbacks:
             detalhamento += "\nInconformidades apontadas:\n- " + "\n- ".join(feedbacks)
             
         return nota_final, detalhamento
     except Exception as e:
-        return 0, f"Erro operacional ao analisar estrutura da planilha: {str(e)}"
+        return 0.0, f"Erro ao ler arquivo: 'Base_de_Dados' ou 'Apoio_Matriz'. Certifique-se de não alterar as abas."
 
 # --- INICIALIZAÇÃO DE ESTADOS ---
 if 'perfil' not in st.session_state: 
@@ -341,6 +347,7 @@ elif st.session_state.perfil == "aluno":
             validos = [f for f in up if f.name.split('.')[0].lower() == nome_e.lower()]
             if validos:
                 arq = next((f for f in validos if f.name.endswith('xlsm')), validos[0])
+                st.session_state.aluno_arquivo_nome = arq.name
                 nota, info = calcular_nota(arq, st.session_state.aluno_dados['nome'])
                 
                 pd.DataFrame([[st.session_state.aluno_dados['nome'], st.session_state.aluno_dados['turma'], nota]], columns=['Aluno','Turma','Nota']).to_csv("db_notas.csv", mode='a', header=not os.path.exists("db_notas.csv"), index=False)
