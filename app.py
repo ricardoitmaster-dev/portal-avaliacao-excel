@@ -19,7 +19,8 @@ except:
     EMAIL_PROFESSOR = "ricardoitmaster@gmail.com"
     SENHA_APP_GOOGLE = "ugjhusmwnbmgzspv"
 
-# Cores Identidade Visual (BMW Portinari Blue, Black, Gold)
+# Cores Identidade Visual (Azul SENAI, BMW Portinari Blue, Black, Gold)
+COR_AZUL_SENAI = "#0054A6"
 COR_AZUL_BMW = "#002366"
 COR_PRETO_BRILHANTE = "#000000"
 COR_DOURADO = "#D4AF37"
@@ -30,7 +31,7 @@ st.set_page_config(page_title="Portal de Avaliação Excel", layout="wide")
 # --- ESTILIZAÇÃO CSS ---
 st.markdown(f"""
     <style>
-        .stApp {{ background-color: {COR_PRETO_BRILHANTE} !important; }}
+        .stApp {{ background-color: {COR_AZUL_SENAI} !important; }}
         h1, h2, h3 {{ color: {COR_DOURADO} !important; font-weight: bold; text-align: center; }}
         label, p, span {{ color: {COR_TEXTO} !important; }}
         .stButton>button {{ 
@@ -109,7 +110,7 @@ def gerar_prova_excel(nome_aluno):
     df_apoio = pd.DataFrame({
         "ID_Prod": range(1, 8),
         "Produto": itens,
-        "Categoria": categorias,
+        "Categoria": categories,
         "Preço Base": [3500.0, 80.0, 150.0, 900.0, 600.0, 45.0, 280.0]
     })
     
