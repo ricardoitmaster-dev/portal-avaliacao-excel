@@ -26,7 +26,7 @@ COR_PRETO_BRILHANTE = "#000000"
 COR_DOURADO = "#D4AF37"
 COR_TEXTO = "#FFFFFF"
 
-st.set_page_config(page_title="Portal de Avaliação Excel", layout="wide")
+st.set_page_config(page_title="Portal de Avaliação Excel SENAI", layout="wide")
 
 # --- ESTILIZAÇÃO CSS ---
 st.markdown(f"""
@@ -110,7 +110,7 @@ def gerar_prova_excel(nome_aluno):
     df_apoio = pd.DataFrame({
         "ID_Prod": range(1, 8),
         "Produto": itens,
-        "Categoria": categories,
+        "Categoria": categorias,
         "Preço Base": [3500.0, 80.0, 150.0, 900.0, 600.0, 45.0, 280.0]
     })
     
@@ -202,22 +202,20 @@ def calcular_nota(arquivo_bytes, nome_aluno):
                         acertos += 1
                 
                 # Execução e incremento do bloco Multiplicação
-                sub_ref = qtd * preco_ref
                 total_testes += 1
                 if pd.notna(row['Subtotal (Multiplicação)']) and str(row['Subtotal (Multiplicação)']).strip() != "":
-                    if abs(float(row['Subtotal (Multiplicação)']) - sub_ref) < 0.1:
+                    if abs(float(row['Subtotal (Multiplicação)']) - (qtd * preco_ref)) < 0.1:
                         acertos += 1
                 
                 # Execução e incremento do bloco Porcentagem e Cálculo Líquido
                 desc_r = float(row['Valor Desconto R$ (Porcentagem)']) if (pd.notna(row['Valor Desconto R$ (Porcentagem)']) and str(row['Valor Desconto R$ (Porcentagem)']).strip() != "") else 0
-                tot_ref = sub_ref - desc_r
                 total_testes += 1
                 if pd.notna(row['Total Líquido (Subtração)']) and str(row['Total Líquido (Subtração)']).strip() != "":
-                    if abs(float(row['Total Líquido (Subtração)']) - tot_ref) < 0.1:
+                    if abs(float(row['Total Líquido (Subtração)']) - ((qtd * preco_ref) - desc_r)) < 0.1:
                         acertos += 1
                 
                 # Execução e incremento do bloco da Função Lógica SE
-                se_ref = "META" if tot_ref >= 1200 else "REVISAR"
+                se_ref = "META" if ((qtd * preco_ref) - desc_r) >= 1200 else "REVISAR"
                 total_testes += 1
                 if pd.notna(row['Status Meta (SE)']) and str(row['Status Meta (SE)']).strip() != "":
                     if str(row['Status Meta (SE)']).strip().upper() == se_ref:
@@ -237,7 +235,7 @@ def calcular_nota(arquivo_bytes, nome_aluno):
                 pontos_macro = 20.0
             else:
                 pontos_macro = 0.0
-                feedbacks.append("Arquivo não contém código VBA ou macros ativas (.xlsm ausente)")
+                feedbacks.append("Nenhum gráfico válido foi construído")
                 
             graficos_achados = 0
             tabela_dinamica_achada = False
@@ -251,12 +249,8 @@ def calcular_nota(arquivo_bytes, nome_aluno):
             # Distribuição matemática de gráficos (Até 20 pontos)
             if graficos_achados >= 2:
                 pontos_graficos = 20.0
-            elif graficos_achados == 1:
-                pontos_graficos = 10.0
-                feedbacks.append("Apenas 1 gráfico foi detectado na estrutura")
             else:
                 pontos_graficos = 0.0
-                feedbacks.append("Nenhum gráfico válido foi construído")
                 
             # Distribuição matemática da Tabela Dinâmica (Até 20 pontos)
             if tabela_dinamica_achada:
@@ -269,18 +263,17 @@ def calcular_nota(arquivo_bytes, nome_aluno):
             pontos_macro = 0.0
             pontos_graficos = 0.0
             pontos_dinamica = 0.0
-            feedbacks.append("Incapaz de extrair validações de objetos (verifique o formato do arquivo enviado)")
             
         # Nota final calculada estritamente na escala de 0 a 100
         nota_final = round(pontos_formulas + pontos_macro + pontos_graficos + pontos_dinamica, 1)
         detalhamento = f"Fórmulas/Matemática: {round(pontos_formulas, 1)}/40.0 | Macros/Botões: {pontos_macro}/20.0 | Gráficos: {pontos_graficos}/20.0 | Tabela Dinâmica: {pontos_dinamica}/20.0"
         
         if feedbacks:
-            detalhamento += "\nInconformidades apontadas:\n- " + "\n- ".join(feedbacks)
+            detalhamento = f"Fórmulas/Matemática: {round(pontos_formulas, 1)}/40.0 | Macros/Botões: {pontos_macro}/20.0 | Gráficos: {pontos_graficos}/20.0 | Tabela Dinâmica: {pontos_dinamica}/20.0 Inconformidades apontadas:\n- " + "\n- ".join(feedbacks)
             
         return nota_final, detalhamento
     except Exception as e:
-        return 0.0, f"Erro ao ler arquivo: 'Base_de_Dados' ou 'Apoio_Matriz'. Certifique-se de não alterar as abas."
+        return 0.0, f"Erro ao ler arquivo: 'TOTAL_FINAL'. Certifique-se de não alterar as abas."
 
 # --- INICIALIZAÇÃO DE ESTADOS ---
 if 'perfil' not in st.session_state: 
@@ -339,13 +332,13 @@ elif st.session_state.perfil == "aluno":
                     
     elif st.session_state.etapa_aluno == 'prova':
         nome_e = f"Avaliacao_{st.session_state.aluno_dados['nome'].replace(' ', '_')}"
-        st.info(f"Envie o arquivo finalizado como: {nome_e}")
-        st.download_button("📥 Baixar Prova", st.session_state.excel_data, f"{nome_e}.xlsx")
+        st.info(f"Aluno: {st.session_state.aluno_dados['nome']} - Turma: {st.session_state.aluno_dados['turma']}")
+        st.download_button("Baixar Planilha", st.session_state.excel_data, f"{nome_e}.xlsx")
         
-        up = st.file_uploader("Upload", type=['xlsx', 'xlsm'], accept_multiple_files=True)
+        up = st.file_uploader("Upload da Prova Resolvida (.xlsm ou .xlsx)", type=['xlsx', 'xlsm'], accept_multiple_files=True)
         
-        if st.button("🚀 Enviar Prova"):
-            validos = [f for f in up if f.name.split('.')[0].lower() == nome_e.lower()]
+        if st.button("Finalizar Entrega"):
+            validos = [f for f in up if f.name.split('.')[0].lower() == nome_e.lower() or f.name.split('_')[0].lower() == "avaliacao"]
             if validos:
                 arq = next((f for f in validos if f.name.endswith('xlsm')), validos[0])
                 st.session_state.aluno_arquivo_nome = arq.name
@@ -358,8 +351,12 @@ elif st.session_state.perfil == "aluno":
                 enviar_email(EMAIL_PROFESSOR, f"Prova - {st.session_state.aluno_dados['nome']}", corpo_email, [(f.getvalue(), f.name) for f in up])
                 enviar_email(st.session_state.aluno_dados['email'], "Seu Resultado na Prova de Excel", corpo_email)
                 
-                st.success(f"Enviado! Nota: {nota}")
-                st.info(info)
+                st.success(f"Finalizado! Nota: {int(nota)}")
+                st.write("### Detalhes da Correção:")
+                st.write(info)
+                st.write("📬 **Status do Envio:**")
+                st.write(f"* E-mail enviado com sucesso para {EMAIL_PROFESSOR}")
+                st.write(f"* E-mail enviado com sucesso para {st.session_state.aluno_dados['email']}")
                 st.balloons()
             else:
                 st.error("Nome do arquivo incorreto. Por favor, envie o arquivo original conforme as instruções.")
