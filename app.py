@@ -129,7 +129,7 @@ def gerar_prova_excel(nome_aluno):
     df_apoio = pd.DataFrame({
         "ID_Prod": range(1, 8),
         "Produto": itens,
-        "Categoria": categorias,
+        "Categoria": categories if 'categories' in locals() else categorias,
         "Preço Base": [3500.0, 80.0, 150.0, 900.0, 600.0, 45.0, 280.0]
     })
     
@@ -300,6 +300,8 @@ if 'perfil' not in st.session_state:
     st.session_state.perfil = None
 if 'etapa_aluno' not in st.session_state:
     st.session_state.etapa_aluno = 'login'
+if 'ja_enviou' not in st.session_state:
+    st.session_state.ja_enviou = False
 
 # --- LAYOUT DE CABEÇALHO ---
 c1, c2, c3 = st.columns([1, 2, 1])
@@ -349,6 +351,7 @@ elif st.session_state.perfil == "aluno":
                     st.session_state.aluno_dados = {"nome": n, "turma": t, "email": e}
                     st.session_state.excel_data = gerar_prova_excel(n)
                     st.session_state.etapa_aluno = 'prova'
+                    st.session_state.ja_enviou = False  # Reseta o status de envio para nova prova
                     st.rerun()
                     
     elif st.session_state.etapa_aluno == 'prova':
@@ -358,29 +361,55 @@ elif st.session_state.perfil == "aluno":
         
         up = st.file_uploader("Upload da Prova Resolvida (.xlsm ou .xlsx)", type=['xlsx', 'xlsm'], accept_multiple_files=True)
         
-        if st.button("Finalizar Entrega"):
-            validos = [f for f in up if f.name.split('.')[0].lower() == nome_e.lower() or f.name.split('_')[0].lower() == "avaliacao"]
-            if validos:
-                arq = next((f for f in validos if f.name.endswith('xlsm')), validos[0])
-                st.session_state.aluno_arquivo_nome = arq.name
-                nota, info = calcular_nota(arq, st.session_state.aluno_dados['nome'])
-                
-                pd.DataFrame([[st.session_state.aluno_dados['nome'], st.session_state.aluno_dados['turma'], nota]], columns=['Aluno','Turma','Nota']).to_csv("db_notas.csv", mode='a', header=not os.path.exists("db_notas.csv"), index=False)
-                
-                corpo_email = f"Resultado SENAI Excel\n\nAluno: {st.session_state.aluno_dados['nome']}\nTurma: {st.session_state.aluno_dados['turma']}\nNota: {nota}\n\nDetalhes da Correção:\n{info}"
-                
-                enviar_email(EMAIL_PROFESSOR, f"Prova - {st.session_state.aluno_dados['nome']}", corpo_email, [(f.getvalue(), f.name) for f in up])
-                enviar_email(st.session_state.aluno_dados['email'], "Seu Resultado na Prova de Excel", corpo_email, [(f.getvalue(), f.name) for f in up])
-                
-                st.success(f"Finalizado! Nota: {int(nota)}")
-                st.write("### Detalhes da Correção:")
-                st.write(info)
-                st.write("📬 **Status do Envio:**")
-                st.write(f"* E-mail enviado com sucesso para {EMAIL_PROFESSOR}")
-                st.write(f"* E-mail enviado com sucesso para {st.session_state.aluno_dados['email']}")
-                st.balloons()
-            else:
-                st.error("Nome do arquivo incorreto. Por favor, envie o arquivo original conforme as instruções.")
+        # Se já enviou anteriormente, exibe mensagem clara e não deixa prosseguir
+        if st.session_state.ja_enviou:
+            st.warning("⚠️ Você já enviou o seu arquivo de avaliação! Não é permitido o envio de arquivos múltiplas vezes.")
+            st.button("Finalizar Entrega", disabled=True)
+        else:
+            if st.button("Finalizar Entrega"):
+                validos = [f for f in up if f.name.split('.')[0].lower() == nome_e.lower() or f.name.split('_')[0].lower() == "avaliacao"]
+                if validos:
+                    arq = next((f for f in validos if f.name.endswith('xlsm')), validos[0])
+                    
+                    # --- VALIDAÇÃO DE FRAUDE (Verifica se a planilha pertence a outro aluno) ---
+                    try:
+                        wb_check = load_workbook(io.BytesIO(arq.getvalue()), read_only=True)
+                        aba_instrucoes = wb_check['Instrucoes_Prova']
+                        celula_nome = str(aba_instrucoes['A2'].value or "") # Linha do Nome do Aluno(a): Nome
+                        wb_check.close()
+                        
+                        # Extrai o nome configurado na célula original
+                        nome_esperado = st.session_state.aluno_dados['nome'].strip().lower()
+                        if nome_esperado not in celula_nome.lower():
+                            st.error("❌ ERRO GRAVE: Esta planilha pertence a outro(a) aluno(a) ou foi adulterada! Por favor, faça os exercícios no arquivo baixado no seu perfil.")
+                            st.stop()
+                    except Exception as err:
+                        st.error("Erro ao validar a assinatura da planilha. Certifique-se de não alterar as abas de instruções.")
+                        st.stop()
+                    # -------------------------------------------------------------------------
+                    
+                    st.session_state.aluno_arquivo_nome = arq.name
+                    nota, info = calcular_nota(arq, st.session_state.aluno_dados['nome'])
+                    
+                    pd.DataFrame([[st.session_state.aluno_dados['nome'], st.session_state.aluno_dados['turma'], nota]], columns=['Aluno','Turma','Nota']).to_csv("db_notas.csv", mode='a', header=not os.path.exists("db_notas.csv"), index=False)
+                    
+                    corpo_email = f"Resultado SENAI Excel\n\nAluno: {st.session_state.aluno_dados['nome']}\nTurma: {st.session_state.aluno_dados['turma']}\nNota: {nota}\n\nDetalhes da Correção:\n{info}"
+                    
+                    enviar_email(EMAIL_PROFESSOR, f"Prova - {st.session_state.aluno_dados['nome']}", corpo_email, [(f.getvalue(), f.name) for f in up])
+                    enviar_email(st.session_state.aluno_dados['email'], "Seu Resultado na Prova de Excel", corpo_email, [(f.getvalue(), f.name) for f in up])
+                    
+                    st.session_state.ja_enviou = True  # Ativa o bloqueio permanente de reenvio
+                    
+                    st.success(f"Finalizado! Nota: {int(nota)}")
+                    st.write("### Detalhes da Correção:")
+                    st.write(info)
+                    st.write("📬 **Status do Envio:**")
+                    st.write(f"* E-mail enviado com sucesso para {EMAIL_PROFESSOR}")
+                    st.write(f"* E-mail enviado com sucesso para {st.session_state.aluno_dados['email']}")
+                    st.balloons()
+                    st.rerun()
+                else:
+                    st.error("Nome do arquivo incorreto. Por favor, envie o arquivo original conforme as instruções.")
 
 # --- PAINEL GESTOR / ADMINISTRATIVO (Sidebar Retornada) ---
 elif st.session_state.perfil == "admin":
