@@ -185,7 +185,7 @@ def gerar_prova_excel(nome_aluno):
             ["3. MULTIPLICAÇÃO: Calcule o 'Subtotal' multiplicando a Quantidade pelo Preço Unitário."],
             ["4. DIVISÃO: Na 'Taxa Desconto %', defina um critério de divisão (ex: dividir a Quantidade por 100 para achar um percentual)."],
             ["5. PORCENTAGEM: No 'Valor Desconto R$', calcule a porcentagem aplicando a taxa sobre o Subtotal."],
-            ["6. SUBTRAÇÃO: O 'Total Líquido' deve ser calculado subtraindo o Desconto do Subtotal."],
+            ["6. SUBTRAÇÃO: O 'Total Líquido' deve ser calculated subtraindo o Desconto do Subtotal."],
             ["7. FUNÇÃO LÓGICA SE: No 'Status Meta', aplique a função SE (Se Total Líquido >= 1200 então 'META', caso contrário 'REVISAR')."],
             ["8. SOMA, SOMASE e CONT.SE: Preencha os campos vazios da aba 'Resumo_Gerencial' utilizando estritamente essas funções."],
             ["9. MACROS DE ORDENAÇÃO: Desenvolva 2 macros gravadas ou em VBA destinadas a ordenar os registros da base."],
@@ -410,7 +410,10 @@ elif st.session_state.perfil == "admin":
                 auth = dfp[(dfp['Professor'].str.lower() == np.lower()) & (dfp['Senha'] == str(sp))]
                 if not auth.empty and os.path.exists("db_notas.csv"):
                     db = pd.read_csv("db_notas.csv")
-                    st.dataframe(db[db['Turma'].isin(auth['Turma'].unique())], use_container_width=True)
+                    turmas_professor = auth['Turma'].unique()
+                    turma_selecionada = st.selectbox("Selecione a Turma que deseja visualizar:", turmas_professor)
+                    dados_filtrados = db[db['Turma'] == turma_selecionada]
+                    st.dataframe(dados_filtrados, use_container_width=True)
                 else:
                     st.warning("Nenhum dado encontrado para esta turma ou credenciais inválidas.")
         else:
