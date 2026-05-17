@@ -53,6 +53,9 @@ st.markdown("""
         .stActionButton {visibility: hidden; display: none !important;}
         [data-testid="stActionButton"] {visibility: hidden; display: none !important;}
         .viewerBadge {display: none !important; visibility: hidden;}
+        [data-testid="stCloudToolbar"] {display: none !important; visibility: hidden;}
+        div[class*="stCloudToolbar"] {display: none !important; visibility: hidden;}
+        iframe[src*="shared-connection-menu"] {display: none !important; visibility: hidden;}
     </style>
     
     <script>
@@ -316,7 +319,7 @@ def calcular_nota(arquivo_bytes, nome_aluno):
             pontos_graficos = 0.0
             pontos_dinamica = 0.0
             
-        nota_final = round(pontos_formulas + pontos_macro + points_graficos + pontos_dinamica, 1)
+        nota_final = round(pontos_formulas + pontos_macro + pontos_graficos + pontos_dinamica, 1)
         detalhamento = f"Fórmulas/Matemática: {round(pontos_formulas, 1)}/40.0 | Macros/Botões: {pontos_macro}/20.0 | Gráficos: {pontos_graficos}/20.0 | Tabela Dinâmica: {pontos_dinamica}/20.0"
         
         if feedbacks:
