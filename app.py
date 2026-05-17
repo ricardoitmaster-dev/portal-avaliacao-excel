@@ -176,9 +176,6 @@ def gerar_prova_excel(nome_aluno):
         df_resumo.to_excel(writer, sheet_name='Resumo_Gerencial', index=False)
         
         instrucoes = [
-            ["AVALIAÇÃO PRÁTICA PROFISSIONAL DE EXCEL"],
-            [f"Nome do Aluno(a): {nome_aluno}"],
-            [""],
             ["CRITÉRIOS E REQUISITOS OBRIGATÓRIOS DA PROVA:"],
             ["1. DATAS COM ALEATORIOENTRE: Preencha a coluna 'Data Venda' utilizando =ALEATORIOENTRE() com números de série de datas deste ano."],
             ["2. BUSCA COM PROCV: Preencha as colunas 'Produto' e 'Preço Unitário' buscando os dados da aba 'Apoio_Matriz' pelo ID."],
@@ -365,6 +362,7 @@ elif st.session_state.perfil == "aluno":
                 st.session_state.aluno_arquivo_nome = arq.name
                 nota, info = calcular_nota(arq, st.session_state.aluno_dados['nome'])
                 
+                # Mantém estritamente as 3 colunas estruturais originais do banco de dados funcional
                 pd.DataFrame([[st.session_state.aluno_dados['nome'], st.session_state.aluno_dados['turma'], nota]], columns=['Aluno','Turma','Nota']).to_csv("db_notas.csv", mode='a', header=not os.path.exists("db_notas.csv"), index=False)
                 
                 corpo_email = f"Resultado SENAI Excel\n\nAluno: {st.session_state.aluno_dados['nome']}\nTurma: {st.session_state.aluno_dados['turma']}\nNota: {nota}\n\nDetalhes da Correção:\n{info}"
@@ -410,7 +408,8 @@ elif st.session_state.perfil == "admin":
                 dfp = pd.read_csv("professores.csv")
                 auth = dfp[(dfp['Professor'].str.lower() == np.lower()) & (dfp['Turma'].str.upper() == tp) & (dfp['Senha'] == str(sp))]
                 if not auth.empty and os.path.exists("db_notas.csv"):
-                    db = pd.read_csv("db_notas.csv")
+                    # Solução definitiva do ParserError: Adicionado o parâmetro 'on_bad_lines' para blindar contra falhas de tabulação
+                    db = pd.read_csv("db_notas.csv", on_bad_lines='skip')
                     st.dataframe(db[db['Turma'] == tp], use_container_width=True)
                 else:
                     st.warning("Nenhum dado encontrado para esta turma ou credenciais inválidas.")
@@ -431,7 +430,7 @@ elif st.session_state.perfil == "admin":
     elif opcao_admin == "🛡️ Área ADM":
         if st.text_input("Senha ADM", type="password") == "Celina2610$$":
             if os.path.exists("db_notas.csv"):
-                st.dataframe(pd.read_csv("db_notas.csv"), use_container_width=True)
+                st.dataframe(pd.read_csv("db_notas.csv", on_bad_lines='skip'), use_container_width=True)
                 if st.button("Limpar Todos os Dados"):
                     os.remove("db_notas.csv")
                     st.rerun()
