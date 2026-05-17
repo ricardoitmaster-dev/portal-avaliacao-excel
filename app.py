@@ -358,19 +358,41 @@ elif st.session_state.perfil == "aluno":
         if st.button("Finalizar Entrega"):
             validos = [f for f in up if f.name.split('.')[0].lower() == nome_e.lower() or f.name.split('_')[0].lower() == "avaliacao"]
             if validos:
-                arq = next((f for f in validos if f.name.endswith('xlsm')), validos[0])
-                st.session_state.aluno_arquivo_nome = arq.name
-                nota, info = calcular_nota(arq, st.session_state.aluno_dados['nome'])
                 
-                # Mantém estritamente as 3 colunas estruturais originais do banco de dados funcional
-                pd.DataFrame([[st.session_state.aluno_dados['nome'], st.session_state.aluno_dados['turma'], nota]], columns=['Aluno','Turma','Nota']).to_csv("db_notas.csv", mode='a', header=not os.path.exists("db_notas.csv"), index=False)
+                # --- NOVA LÓGICA DE MÉDIA PARA MÚLTIPLOS ARQUIVOS ---
+                notas_calculadas = []
+                infos_detalhados = []
+                for arq in validos:
+                    st.session_state.aluno_arquivo_nome = arq.name
+                    nota_parcial, info_parcial = calcular_nota(arq, st.session_state.aluno_dados['nome'])
+                    notas_calculadas.append(nota_parcial)
+                    infos_detalhados.append(f"Arquivo [{arq.name}]:\n{info_parcial}")
                 
-                corpo_email = f"Resultado SENAI Excel\n\nAluno: {st.session_state.aluno_dados['nome']}\nTurma: {st.session_state.aluno_dados['turma']}\nNota: {nota}\n\nDetalhes da Correção:\n{info}"
+                # Faz a média das notas se houver mais de um arquivo, se houver um só, prevalece a nota única
+                nota_final = round(sum(notas_calculadas) / len(notas_calculadas), 1)
+                info = "\n\n".join(infos_detalhados)
+                
+                # --- LÓGICA DE GRAVAÇÃO NO BANCO DE DADOS (EVITANDO DUPLICIDADE) ---
+                if os.path.exists("db_notas.csv"):
+                    df_banco = pd.read_csv("db_notas.csv", on_bad_lines='skip')
+                    # Verifica se o aluno já existe na turma atual
+                    mask = (df_banco['Aluno'] == st.session_state.aluno_dados['nome']) & (df_banco['Turma'] == st.session_state.aluno_dados['turma'])
+                    
+                    if mask.any():
+                        # Se já existir, atualiza a nota em vez de criar uma nova linha (evita duas notas)
+                        df_banco.loc[mask, 'Nota'] = nota_final
+                        df_banco.to_csv("db_notas.csv", index=False)
+                    else:
+                        pd.DataFrame([[st.session_state.aluno_dados['nome'], st.session_state.aluno_dados['turma'], nota_final]], columns=['Aluno','Turma','Nota']).to_csv("db_notas.csv", mode='a', header=False, index=False)
+                else:
+                    pd.DataFrame([[st.session_state.aluno_dados['nome'], st.session_state.aluno_dados['turma'], nota_final]], columns=['Aluno','Turma','Nota']).to_csv("db_notas.csv", mode='w', header=True, index=False)
+                
+                corpo_email = f"Resultado SENAI Excel\n\nAluno: {st.session_state.aluno_dados['nome']}\nTurma: {st.session_state.aluno_dados['turma']}\nNota Final Consolidada: {nota_final}\n\nDetalhes da Correção:\n{info}"
                 
                 enviar_email(EMAIL_PROFESSOR, f"Prova - {st.session_state.aluno_dados['nome']}", corpo_email, [(f.getvalue(), f.name) for f in up])
                 enviar_email(st.session_state.aluno_dados['email'], "Seu Resultado na Prova de Excel", corpo_email, [(f.getvalue(), f.name) for f in up])
                 
-                st.success(f"Finalizado! Nota: {int(nota)}")
+                st.success(f"Finalizado! Nota Final: {nota_final}")
                 st.write("### Detalhes da Correção:")
                 st.write(info)
                 st.write("📬 **Status do Envio:**")
