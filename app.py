@@ -376,12 +376,12 @@ elif st.session_state.perfil == "aluno":
                 if os.path.exists("db_notas.csv"):
                     df_banco = pd.read_csv("db_notas.csv", on_bad_lines='skip')
                     # Verifica se o aluno já existe na turma atual
-                    mask = (df_banco['Aluno'] == st.session_state.aluno_dados['nome']) & (df_banco['Turma'] == st.session_state.aluno_dados['turma'])
+                    mask = (df_banco['Aluno'].astype(str).str.strip().str.upper() == str(st.session_state.aluno_dados['nome']).strip().upper()) & (df_banco['Turma'].astype(str).str.strip().str.upper() == str(st.session_state.aluno_dados['turma']).strip().upper())
                     
                     if mask.any():
                         # Se já existir, atualiza a nota em vez de criar uma nova linha (evita duas notas)
                         df_banco.loc[mask, 'Nota'] = nota_final
-                        df_banco.to_csv("db_notas.csv", index=False)
+                        df_banco.drop_duplicates(subset=['Aluno', 'Turma'], keep='last').to_csv("db_notas.csv", index=False)
                     else:
                         pd.DataFrame([[st.session_state.aluno_dados['nome'], st.session_state.aluno_dados['turma'], nota_final]], columns=['Aluno','Turma','Nota']).to_csv("db_notas.csv", mode='a', header=False, index=False)
                 else:
@@ -430,7 +430,6 @@ elif st.session_state.perfil == "admin":
                 dfp = pd.read_csv("professores.csv")
                 auth = dfp[(dfp['Professor'].str.lower() == np.lower()) & (dfp['Turma'].str.upper() == tp) & (dfp['Senha'] == str(sp))]
                 if not auth.empty and os.path.exists("db_notas.csv"):
-                    # Solução definitiva do ParserError: Adicionado o parâmetro 'on_bad_lines' para blindar contra falhas de tabulação
                     db = pd.read_csv("db_notas.csv", on_bad_lines='skip')
                     st.dataframe(db[db['Turma'] == tp], use_container_width=True)
                 else:
