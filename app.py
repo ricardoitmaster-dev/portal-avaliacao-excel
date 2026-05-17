@@ -44,9 +44,15 @@ st.set_page_config(page_title="Portal de Avaliação Excel SENAI", layout="wide"
 # --- PROTOCOLO DE SEGURANÇA E BLOQUEIO DE INSPEÇÃO (F12 / CLIQUE DIREITO) ---
 st.markdown("""
     <style>
-        #MainMenu {visibility: hidden;} /* Oculta o menu de 3 pontinhos nativo do Streamlit */
-        footer {visibility: hidden;}    /* Oculta o rodapé padrão da plataforma */
-        header {visibility: hidden;}    /* Oculta a barra de cabeçalho superior nativa */
+        #MainMenu {visibility: hidden; display: none !important;} /* Oculta o menu de 3 pontinhos nativo do Streamlit */
+        footer {visibility: hidden; display: none !important;}    /* Oculta o rodapé padrão da plataforma */
+        header {visibility: hidden; display: none !important;}    /* Oculta a barra de cabeçalho superior nativa */
+        
+        /* Remove completamente o painel "Manage app", botões de engrenagem e menus de controle da hospedagem cloud (canto inferior direito) */
+        div[data-testid="stStatusWidget"] {visibility: hidden; display: none !important;}
+        .stActionButton {visibility: hidden; display: none !important;}
+        [data-testid="stActionButton"] {visibility: hidden; display: none !important;}
+        .viewerBadge {display: none !important; visibility: hidden;}
     </style>
     
     <script>
@@ -310,7 +316,7 @@ def calcular_nota(arquivo_bytes, nome_aluno):
             pontos_graficos = 0.0
             pontos_dinamica = 0.0
             
-        nota_final = round(pontos_formulas + pontos_macro + pontos_graficos + pontos_dinamica, 1)
+        nota_final = round(pontos_formulas + pontos_macro + points_graficos + pontos_dinamica, 1)
         detalhamento = f"Fórmulas/Matemática: {round(pontos_formulas, 1)}/40.0 | Macros/Botões: {pontos_macro}/20.0 | Gráficos: {pontos_graficos}/20.0 | Tabela Dinâmica: {pontos_dinamica}/20.0"
         
         if feedbacks:
