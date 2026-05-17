@@ -176,23 +176,23 @@ def gerar_prova_excel(nome_aluno):
         df_resumo.to_excel(writer, sheet_name='Resumo_Gerencial', index=False)
         
         instrucoes = [
-            ["AVALIAÇÃO PRÁTICA PROFISSIONAL DE EXCEL - SENAI"],
+            ["AVALIAÇÃO PRÁTICA PROFISSIONAL DE EXCEL"],
             [f"Nome do Aluno(a): {nome_aluno}"],
             [""],
-            ["MANUAL DE INSTRUÇÕES DETALHADO PARA REALIZAÇÃO DA PROVA:"],
-            ["1. DATAS COM ALEATORIOENTRE: Na aba 'Base_de_Dados', preencha toda a coluna 'Data Venda' utilizando a função =ALEATORIOENTRE(). Use números de série válidos para gerar datas do ano corrente (ex: entre 45658 e 46022) e formate a coluna como Data."],
-            ["2. BUSCA COM PROCV (PRODUTO E PREÇO): Na aba 'Base_de_Dados', use a função =PROCV() para preencher automaticamente as colunas 'Produto (ProcV)' e 'Preço Unitário (ProcV)'. Use como valor procurado o 'ID_Produto' desta aba e busque a matriz-tabela estritamente nas colunas A até D da aba 'Apoio_Matriz'. Não esqueça de travar a matriz ($A:$D) e definir a busca exata (0 ou FALSO)."],
-            ["3. MULTIPLICAÇÃO (SUBTOTAL): Na coluna 'Subtotal (Multiplicação)', crie uma fórmula simples multiplicando o valor encontrado na coluna 'Quantidade' pelo valor da coluna 'Preço Unitário (ProcV)' (=Quantidade*Preço Unitário)."],
-            ["4. DIVISÃO (TAXA DESCONTO): Na coluna 'Taxa Desconto % (Divisão)', defina uma taxa percentual dividindo o valor da coluna 'Quantidade' por 100 (=Quantidade/100). Formate as células como Porcentagem (%) para exibição adequada."],
-            ["5. PORCENTAGEM (VALOR DESCONTO): Na coluna 'Valor Desconto R$ (Porcentagem)', calcule o valor real do desconto em moeda. Multiplique o 'Subtotal (Multiplicação)' pela 'Taxa Desconto % (Divisão)' de cada linha."],
-            ["6. SUBTRAÇÃO (TOTAL LÍQUIDO): Na coluna 'Total Líquido (Subtração)', execute a subtração matemática deduzindo o valor do desconto calculado do subtotal (=Subtotal - Valor Desconto R$)."],
-            ["7. FUNÇÃO LÓGICA SE (STATUS META): Na coluna 'Status Meta (SE)', crie uma estrutura de decisão lógica com a função SE. O critério é: Se o 'Total Líquido (Subtração)' for maior ou igual a 1200, a célula deve retornar exatamente o texto \"META\"; caso contrário, deve retornar exatamente o texto \"REVISAR\"."],
-            ["8. SOMA, MÉDIA, SOMASE E CONT.SE: Vá até a aba 'Resumo_Gerencial'. Na coluna 'Resultado do Aluno', insira estritamente as funções solicitadas: na linha 1 use =SOMA() para somar o Total Líquido da aba anterior; na linha 2 use =MÉDIA() para a média da coluna Quantidade; na linha 3 use =SOMASE() para somar o Total Líquido apenas onde a Categoria for \"Informática\"; na linha 4 use =CONT.SE() para contar os pedidos de \"Informática\"."],
-            ["9. MACROS DE ORDENAÇÃO: Desenvolva obrigatoriamente 2 macros utilizando a gravação de passos ou programação VBA. Uma macro deve ordenar a aba 'Base_de_Dados' de forma Crescente pelo número do pedido, e a outra macro deve ordenar de forma Decrescente pelo Total Líquido."],
-            ["10. BOTÕES OPERACIONAIS: Insira na planilha 2 formas (Shapes) ou botões de comando. Atribua individualmente a cada um deles uma das macros criadas no passo anterior, nomeando-os de forma clara para que o usuário saiba qual ordenação será ativada."],
-            ["11. COMPONENTES GRÁFICOS: Crie e posicione estrategicamente na planilha 2 gráficos (podem ser dinâmicos ou estáticos) que representem visualmente os resultados encontrados, facilitando a análise gerencial dos pedidos."],
-            ["12. TABELA DINÂMICA: Desenvolva 1 Tabela Dinâmica completa. Consolide os dados estruturados da 'Base_de_Dados' e configure-a obrigatoriamente em uma nova aba exclusiva da planilha."],
-            ["13. REGRA E FORMATO DE ENTREGA: Após finalizar o desenvolvimento de todas as fórmulas e recursos visuais, salve obrigatoriamente o seu arquivo final com a extensão .xlsm (Planilha Habilitada para Macro do Excel). Arquivos enviados in .xlsx perderão os pontos das macros por restrição técnica do formato."]
+            ["CRITÉRIOS E REQUISITOS OBRIGATÓRIOS DA PROVA:"],
+            ["1. DATAS COM ALEATORIOENTRE: Preencha a coluna 'Data Venda' utilizando =ALEATORIOENTRE() com números de série de datas deste ano."],
+            ["2. BUSCA COM PROCV: Preencha as colunas 'Produto' e 'Preço Unitário' buscando os dados da aba 'Apoio_Matriz' pelo ID."],
+            ["3. MULTIPLICAÇÃO: Calcule o 'Subtotal' multiplicando a Quantidade pelo Preço Unitário."],
+            ["4. DIVISÃO: Na 'Taxa Desconto %', defina um critério de divisão (ex: dividir a Quantidade por 100 para achar um percentual)."],
+            ["5. PORCENTAGEM: No 'Valor Desconto R$', calcule a porcentagem aplicando a taxa sobre o Subtotal."],
+            ["6. SUBTRAÇÃO: O 'Total Líquido' deve ser calculated subtraindo o Desconto do Subtotal."],
+            ["7. FUNÇÃO LÓGICA SE: No 'Status Meta', aplique a função SE (Se Total Líquido >= 1200 então 'META', caso contrário 'REVISAR')."],
+            ["8. SOMA, SOMASE e CONT.SE: Preencha os campos vazios da aba 'Resumo_Gerencial' utilizando estritamente essas funções."],
+            ["9. MACROS DE ORDENAÇÃO: Desenvolva 2 macros gravadas ou em VBA destinadas a ordenar os registros da base."],
+            ["10. BOTÕES OPERACIONAIS: Crie 2 botões na planilha e atribua cada um deles a uma macro de ordenação desenvolvida."],
+            ["11. COMPONENTES GRÁFICOS: Insira obrigatoriamente 2 gráficos dinâmicos ou estáticos que facilitem a leitura dos dados."],
+            ["12. TABELA DINÂMICA: Desenvolva 1 Tabela Dinâmica consolidando as informações em uma nova aba exclusiva."],
+            ["13. ENTREGA: Salve seu arquivo final impreterivelmente no formato .xlsm (Planilha Habilitada para Macro do Excel)."]
         ]
         pd.DataFrame(instrucoes).to_excel(writer, sheet_name='Instrucoes_Prova', index=False, header=False)
         
@@ -361,55 +361,24 @@ elif st.session_state.perfil == "aluno":
         if st.button("Finalizar Entrega"):
             validos = [f for f in up if f.name.split('.')[0].lower() == nome_e.lower() or f.name.split('_')[0].lower() == "avaliacao"]
             if validos:
-                # Pega o arquivo que será processado
                 arq = next((f for f in validos if f.name.endswith('xlsm')), validos[0])
                 st.session_state.aluno_arquivo_nome = arq.name
+                nota, info = calcular_nota(arq, st.session_state.aluno_dados['nome'])
                 
-                # --- VALIDAÇÃO EXCLUSIVA POR NOME E EXTENSÃO EXATA DO ARQUIVO ---
-                ja_enviou = False
-                if os.path.exists("db_notas.csv"):
-                    try:
-                        df_historico = pd.read_csv("db_notas.csv")
-                        # Verifica se na base já existe um registro do mesmo aluno, mesma turma e com o mesmo nome de arquivo exato
-                        if 'Arquivo' in df_historico.columns:
-                            duplicado = df_historico[
-                                (df_historico['Aluno'].str.lower() == st.session_state.aluno_dados['nome'].lower()) & 
-                                (df_historico['Turma'].str.upper() == st.session_state.aluno_dados['turma'].upper()) & 
-                                (df_historico['Arquivo'].str.lower() == arq.name.lower())
-                            ]
-                            if not duplicado.empty:
-                                ja_enviou = True
-                    except:
-                        pass
-
-                if ja_enviou:
-                    st.error("Você já enviou o seu arquivo de avaliação! Não é permitido o envio de arquivos múltiplas vezes.")
-                else:
-                    # Executa a correção se o arquivo for inédito (ou extensão diferente)
-                    nota, info = calcular_nota(arq, st.session_state.aluno_dados['nome'])
-                    
-                    # Salva incluindo a nova coluna 'Arquivo' para controle preciso posterior
-                    novo_registro = pd.DataFrame([[
-                        st.session_state.aluno_dados['nome'], 
-                        st.session_state.aluno_dados['turma'], 
-                        nota,
-                        arq.name
-                    ]], columns=['Aluno', 'Turma', 'Nota', 'Arquivo'])
-                    
-                    novo_registro.to_csv("db_notas.csv", mode='a', header=not os.path.exists("db_notas.csv"), index=False)
-                    
-                    corpo_email = f"Resultado SENAI Excel\n\nAluno: {st.session_state.aluno_dados['nome']}\nTurma: {st.session_state.aluno_dados['turma']}\nNota: {nota}\n\nDetalhes da Correção:\n{info}"
-                    
-                    enviar_email(EMAIL_PROFESSOR, f"Prova - {st.session_state.aluno_dados['nome']}", corpo_email, [(f.getvalue(), f.name) for f in up])
-                    enviar_email(st.session_state.aluno_dados['email'], "Seu Resultado na Prova de Excel", corpo_email, [(f.getvalue(), f.name) for f in up])
-                    
-                    st.success(f"Finalizado! Nota: {int(nota)}")
-                    st.write("### Detalhes da Correção:")
-                    st.write(info)
-                    st.write("📬 **Status do Envio:**")
-                    st.write(f"* E-mail enviado com sucesso para {EMAIL_PROFESSOR}")
-                    st.write(f"* E-mail enviado com sucesso para {st.session_state.aluno_dados['email']}")
-                    st.balloons()
+                pd.DataFrame([[st.session_state.aluno_dados['nome'], st.session_state.aluno_dados['turma'], nota]], columns=['Aluno','Turma','Nota']).to_csv("db_notas.csv", mode='a', header=not os.path.exists("db_notas.csv"), index=False)
+                
+                corpo_email = f"Resultado SENAI Excel\n\nAluno: {st.session_state.aluno_dados['nome']}\nTurma: {st.session_state.aluno_dados['turma']}\nNota: {nota}\n\nDetalhes da Correção:\n{info}"
+                
+                enviar_email(EMAIL_PROFESSOR, f"Prova - {st.session_state.aluno_dados['nome']}", corpo_email, [(f.getvalue(), f.name) for f in up])
+                enviar_email(st.session_state.aluno_dados['email'], "Seu Resultado na Prova de Excel", corpo_email, [(f.getvalue(), f.name) for f in up])
+                
+                st.success(f"Finalizado! Nota: {int(nota)}")
+                st.write("### Detalhes da Correção:")
+                st.write(info)
+                st.write("📬 **Status do Envio:**")
+                st.write(f"* E-mail enviado com sucesso para {EMAIL_PROFESSOR}")
+                st.write(f"* E-mail enviado com sucesso para {st.session_state.aluno_dados['email']}")
+                st.balloons()
             else:
                 st.error("Nome do arquivo incorreto. Por favor, envie o arquivo original conforme as instruções.")
 
