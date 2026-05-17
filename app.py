@@ -44,18 +44,9 @@ st.set_page_config(page_title="Portal de Avaliação Excel SENAI", layout="wide"
 # --- PROTOCOLO DE SEGURANÇA E BLOQUEIO DE INSPEÇÃO (F12 / CLIQUE DIREITO) ---
 st.markdown("""
     <style>
-        #MainMenu {visibility: hidden; display: none !important;} /* Oculta o menu de 3 pontinhos nativo do Streamlit */
-        footer {visibility: hidden; display: none !important;}    /* Oculta o rodapé padrão da plataforma */
-        header {visibility: hidden; display: none !important;}    /* Oculta a barra de cabeçalho superior nativa */
-        
-        /* Remove completamente o painel "Manage app", botões de engrenagem e menus de controle da hospedagem cloud (canto inferior direito) */
-        div[data-testid="stStatusWidget"] {visibility: hidden; display: none !important;}
-        .stActionButton {visibility: hidden; display: none !important;}
-        [data-testid="stActionButton"] {visibility: hidden; display: none !important;}
-        .viewerBadge {display: none !important; visibility: hidden;}
-        [data-testid="stCloudToolbar"] {display: none !important; visibility: hidden;}
-        div[class*="stCloudToolbar"] {display: none !important; visibility: hidden;}
-        iframe[src*="shared-connection-menu"] {display: none !important; visibility: hidden;}
+        #MainMenu {visibility: hidden;} /* Oculta o menu de 3 pontinhos nativo do Streamlit */
+        footer {visibility: hidden;}    /* Oculta o rodapé padrão da plataforma */
+        header {visibility: hidden;}    /* Oculta a barra de cabeçalho superior nativa */
     </style>
     
     <script>
@@ -178,7 +169,7 @@ def gerar_prova_excel(nome_aluno):
     df_apoio = pd.DataFrame({
         "ID_Prod": range(1, 8),
         "Produto": itens,
-        "Categoria": categories,
+        "Categoria": categorias,
         "Preço Base": [3500.0, 80.0, 150.0, 900.0, 600.0, 45.0, 280.0]
     })
     
@@ -390,49 +381,49 @@ elif st.session_state.perfil == "aluno":
         st.info(f"Aluno: {st.session_state.aluno_dados['nome']} - Turma: {st.session_state.aluno_dados['turma']}")
         st.download_button("Baixar Planilha", st.session_state.excel_data, f"{nome_e}.xlsx")
         
-        # PROTOCOLO SEGURO: accept_multiple_files definido como False garante processamento estrito de arquivo único
-        up = st.file_uploader("Upload da Prova Resolvida (.xlsm ou .xlsx)", type=['xlsx', 'xlsm'], accept_multiple_files=False)
+        up = st.file_uploader("Upload da Prova Resolvida (.xlsm ou .xlsx)", type=['xlsx', 'xlsm'], accept_multiple_files=True)
         
         if st.button("Finalizar Entrega"):
-            if up is not None:
-                # VALIDAÇÃO DE IDENTIDADE COMPLETA: Extrai o nome raiz e rejeita uploads de terceiros ou nomes genéricos
-                nome_arquivo_limpo = up.name.split('.')[0].lower()
+            validos = [f for f in up if f.name.split('.')[0].lower() == nome_e.lower() or f.name.split('_')[0].lower() == "avaliacao"]
+            if validos:
                 
-                if nome_arquivo_limpo == nome_e.lower():
-                    st.session_state.aluno_arquivo_nome = up.name
-                    nota_final, info = calcular_nota(up, st.session_state.aluno_dados['nome'])
+                notas_calculadas = []
+                infos_detalhados = []
+                for arq in validos:
+                    st.session_state.aluno_arquivo_nome = arq.name
+                    nota_parcial, info_parcial = calcular_nota(arq, st.session_state.aluno_dados['nome'])
+                    notas_calculadas.append(nota_parcial)
+                    infos_detalhados.append(f"Arquivo [{arq.name}]:\n{info_parcial}")
+                
+                nota_final = round(sum(notas_calculadas) / len(notas_calculadas), 1)
+                info = "\n\n".join(infos_detalhados)
+                
+                if os.path.exists("db_notas.csv"):
+                    df_banco = pd.read_csv("db_notas.csv", on_bad_lines='skip')
+                    mask = (df_banco['Aluno'].astype(str).str.strip().str.upper() == str(st.session_state.aluno_dados['nome']).strip().upper()) & (df_banco['Turma'].astype(str).str.strip().str.upper() == str(st.session_state.aluno_dados['turma']).strip().upper())
                     
-                    # Persistência dos indicadores analíticos no banco relacional db_notas.csv
-                    if os.path.exists("db_notas.csv"):
-                        df_banco = pd.read_csv("db_notas.csv", on_bad_lines='skip')
-                        mask = (df_banco['Aluno'].astype(str).str.strip().str.upper() == str(st.session_state.aluno_dados['nome']).strip().upper()) & (df_banco['Turma'].astype(str).str.strip().str.upper() == str(st.session_state.aluno_dados['turma']).strip().upper())
-                        
-                        if mask.any():
-                            df_banco.loc[mask, 'Nota'] = nota_final
-                            df_banco.drop_duplicates(subset=['Aluno', 'Turma'], keep='last').to_csv("db_notas.csv", index=False)
-                        else:
-                            pd.DataFrame([[st.session_state.aluno_dados['nome'], st.session_state.aluno_dados['turma'], nota_final]], columns=['Aluno','Turma','Nota']).to_csv("db_notas.csv", mode='a', header=False, index=False)
+                    if mask.any():
+                        df_banco.loc[mask, 'Nota'] = nota_final
+                        df_banco.drop_duplicates(subset=['Aluno', 'Turma'], keep='last').to_csv("db_notas.csv", index=False)
                     else:
-                        pd.DataFrame([[st.session_state.aluno_dados['nome'], st.session_state.aluno_dados['turma'], nota_final]], columns=['Aluno','Turma','Nota']).to_csv("db_notas.csv", mode='w', header=True, index=False)
-                    
-                    # Preparação do corpo de e-mail integrado para envio simultâneo de relatórios
-                    corpo_email = f"Resultado SENAI Excel\n\nAluno: {st.session_state.aluno_dados['nome']}\nTurma: {st.session_state.aluno_dados['turma']}\nNota Final Consolidada: {nota_final}\n\nDetalhes da Correção:\n{info}"
-                    
-                    enviar_email(EMAIL_PROFESSOR, f"Prova - {st.session_state.aluno_dados['nome']}", corpo_email, [(up.getvalue(), up.name)])
-                    enviar_email(st.session_state.aluno_dados['email'], "Seu Resultado na Prova de Excel", corpo_email, [(up.getvalue(), up.name)])
-                    
-                    st.success(f"Finalizado! Nota Final: {nota_final}")
-                    st.write("### Detalhes da Correção:")
-                    st.write(info)
-                    st.write("📬 **Status do Envio:**")
-                    st.write(f"* E-mail enviado com sucesso para {EMAIL_PROFESSOR}")
-                    st.write(f"* E-mail enviado com sucesso para {st.session_state.aluno_dados['email']}")
-                    st.balloons()
+                        pd.DataFrame([[st.session_state.aluno_dados['nome'], st.session_state.aluno_dados['turma'], nota_final]], columns=['Aluno','Turma','Nota']).to_csv("db_notas.csv", mode='a', header=False, index=False)
                 else:
-                    # Alerta imediato em tela caso haja tentativa de envio de arquivo incorreto ou de outro colega
-                    st.error("Arquivo Inválido: O documento enviado não corresponde ao seu nome de usuário. Por favor, envie sua própria planilha.")
+                    pd.DataFrame([[st.session_state.aluno_dados['nome'], st.session_state.aluno_dados['turma'], nota_final]], columns=['Aluno','Turma','Nota']).to_csv("db_notas.csv", mode='w', header=True, index=False)
+                
+                corpo_email = f"Resultado SENAI Excel\n\nAluno: {st.session_state.aluno_dados['nome']}\nTurma: {st.session_state.aluno_dados['turma']}\nNota Final Consolidada: {nota_final}\n\nDetalhes da Correção:\n{info}"
+                
+                enviar_email(EMAIL_PROFESSOR, f"Prova - {st.session_state.aluno_dados['nome']}", corpo_email, [(f.getvalue(), f.name) for f in up])
+                enviar_email(st.session_state.aluno_dados['email'], "Seu Resultado na Prova de Excel", corpo_email, [(f.getvalue(), f.name) for f in up])
+                
+                st.success(f"Finalizado! Nota Final: {nota_final}")
+                st.write("### Detalhes da Correção:")
+                st.write(info)
+                st.write("📬 **Status do Envio:**")
+                st.write(f"* E-mail enviado com sucesso para {EMAIL_PROFESSOR}")
+                st.write(f"* E-mail enviado com sucesso para {st.session_state.aluno_dados['email']}")
+                st.balloons()
             else:
-                st.error("Por favor, selecione e faça o upload de sua planilha de avaliação antes de tentar finalizar a entrega.")
+                st.error("Nome do arquivo incorreto. Por favor, envie o arquivo original conforme as instruções.")
 
 # --- PAINEL GESTOR / ADMINISTRATIVO (Sidebar Retornada) ---
 elif st.session_state.perfil == "admin":
