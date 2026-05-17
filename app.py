@@ -404,16 +404,14 @@ elif st.session_state.perfil == "admin":
     if opcao_admin == "📊 Notas":
         if os.path.exists("professores.csv"):
             np = st.text_input("Professor")
+            tp = st.text_input("Turma").upper()
             sp = st.text_input("Senha", type="password")
             if st.button("Consultar"):
                 dfp = pd.read_csv("professores.csv")
-                auth = dfp[(dfp['Professor'].str.lower() == np.lower()) & (dfp['Senha'] == str(sp))]
+                auth = dfp[(dfp['Professor'].str.lower() == np.lower()) & (dfp['Turma'].str.upper() == tp) & (dfp['Senha'] == str(sp))]
                 if not auth.empty and os.path.exists("db_notas.csv"):
                     db = pd.read_csv("db_notas.csv")
-                    turmas_professor = auth['Turma'].unique()
-                    turma_selecionada = st.selectbox("Selecione a Turma que deseja visualizar:", turmas_professor)
-                    dados_filtrados = db[db['Turma'] == turma_selecionada]
-                    st.dataframe(dados_filtrados, use_container_width=True)
+                    st.dataframe(db[db['Turma'] == tp], use_container_width=True)
                 else:
                     st.warning("Nenhum dado encontrado para esta turma ou credenciais inválidas.")
         else:
