@@ -294,20 +294,21 @@ if st.session_state.perfil is None:
     st.title("Sistema de Avaliação Técnica")
     st.write("### Bem-vindo! Selecione seu perfil de acesso:")
     
-    _, col1, col2, _ = st.columns([0.8, 1, 1, 0.8])
+    _, col1, col2, col3, _ = st.columns([0.2, 1, 1, 1, 0.2])
+    
     with col1:
         if st.button("🎓 SOU ALUNO"):
             st.session_state.perfil = "aluno"
             st.rerun()
+            
     with col2:
         if st.button("👨‍🏫 PROFESSOR / GESTOR"):
             st.session_state.perfil = "admin"
             st.rerun()
             
-    _, col_sair, _ = st.columns([1.5, 1, 1.5])
-    with col_sair:
+    with col3:
         st.markdown(
-            '<a href="https://guarulhos.sp.senai.br/" target="_self" class="btn-sair-link">❌ SAIR DO SISTEMA</a>', 
+            '<a href="https://guarulhos.sp.senai.br/" target="_self" class="btn-sair-link" style="margin-top: 0px;">❌ SAIR DO SISTEMA</a>', 
             unsafe_allow_html=True
         )
 
