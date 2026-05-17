@@ -41,6 +41,33 @@ COR_TEXTO = "#FFFFFF"
 
 st.set_page_config(page_title="Portal de Avaliação Excel SENAI", layout="wide")
 
+# --- PROTOCOLO DE SEGURANÇA E BLOQUEIO DE INSPEÇÃO (F12 / CLIQUE DIREITO) ---
+st.markdown("""
+    <style>
+        #MainMenu {visibility: hidden;} /* Oculta o menu de 3 pontinhos nativo do Streamlit */
+        footer {visibility: hidden;}    /* Oculta o rodapé padrão da plataforma */
+        header {visibility: hidden;}    /* Oculta a barra de cabeçalho superior nativa */
+    </style>
+    
+    <script>
+        // Desabilita o menu de contexto do clique com o botão direito do mouse
+        document.addEventListener('contextmenu', event => event.preventDefault());
+        
+        // Bloqueia chaves de atalho de inspeção técnica (F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U)
+        document.onkeydown = function(e) {
+            if (e.keyCode == 123) { // Tecla F12
+                return false;
+            }
+            if (e.ctrlKey && e.shiftKey && (e.keyCode == 73 || e.keyCode == 74)) { // Ctrl+Shift+I ou Ctrl+Shift+J
+                return false;
+            }
+            if (e.ctrlKey && e.keyCode == 85) { // Ctrl+U (Código-fonte exposto da página)
+                return false;
+            }
+        };
+    </script>
+""", unsafe_allow_html=True)
+
 # --- ESTILIZAÇÃO CSS ---
 st.markdown(f"""
     <style>
