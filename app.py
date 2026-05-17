@@ -230,12 +230,13 @@ def calcular_nota(arquivo_bytes, nome_aluno):
         try:
             wb = load_workbook(arquivo_bytes, keep_vba=True)
             
-            # Validação Real de Macros (Exige extensão .xlsm legítima com dados VBA internos)
-            if wb.vba_archive and hasattr(st.session_state, 'aluno_arquivo_nome') and str(st.session_state.aluno_arquivo_nome).lower().endswith('.xlsm'):
+            # Validação Real de Macros e Botões/Shapes operacionais ativos
+            tem_botoes = any(len(p._images) > 0 or hasattr(p, 'legacy_drawing') and p.legacy_drawing for p in wb.worksheets)
+            if wb.vba_archive and str(st.session_state.get('aluno_arquivo_nome', '')).lower().endswith('.xlsm') and tem_botoes:
                 pontos_macro = 20.0
             else:
                 pontos_macro = 0.0
-                feedbacks.append("Nenhum gráfico válido foi construído")
+                feedbacks.append("Nenhum botão de macro operacional foi criado")
                 
             graficos_achados = 0
             tabela_dinamica_achada = False
