@@ -228,25 +228,27 @@ def gerar_prova_excel(nome_aluno):
         
         instrucoes = [
 
-        ["CRITÉRIOS E REQUISITOS OBRIGATÓRIOS DA PROVA DE EXCEL BÁSICO"],
+        ["PROVA DE EXCEL BÁSICO"],
 
-        ["1. MULTIPLICAÇÃO: Calcule o Total Produto multiplicando a Quantidade pelo Preço Unitário."],
+        ["1. SOMA: Utilize a função SOMA para calcular os totais solicitados."],
 
-        ["2. DIVISÃO: Calcule o Rateio dividindo o Total Produto por 10."],
+        ["2. SUBTRAÇÃO: Realize cálculos de diferença entre valores utilizando fórmulas."],
 
-        ["3. PORCENTAGEM: Calcule o Valor do Desconto aplicando o percentual informado."],
+        ["3. MULTIPLICAÇÃO: Calcule os valores totais multiplicando Quantidade por Preço Unitário."],
 
-        ["4. SUBTRAÇÃO: Calcule o Total Final descontando o Valor do Desconto."],
+        ["4. DIVISÃO: Realize os cálculos de divisão conforme solicitado nas colunas indicadas."],
 
-        ["5. REFERÊNCIA RELATIVA: Utilize referências normais nas fórmulas da planilha."],
+        ["5. PORCENTAGEM: Calcule descontos ou acréscimos utilizando percentuais."],
 
-        ["6. REFERÊNCIA ABSOLUTA: Utilize uma célula fixa para calcular o Bônus."],
+        ["6. REFERÊNCIA RELATIVA: Utilize referências relativas nas fórmulas da planilha."],
 
-        ["7. SOMA: Calcule o Total Geral utilizando a função SOMA."],
+        ["7. REFERÊNCIA ABSOLUTA: Utilize referências absolutas ($) quando solicitado."],
 
-        ["8. INSIRA 1 GRÁFICO baseado nos valores calculados."],
+        ["8. GRÁFICO: Crie 1 gráfico utilizando os dados calculados na planilha."],
 
-        ["9. SALVE E ENVIE O ARQUIVO FINAL PARA CORREÇÃO."]
+        ["9. NÃO É NECESSÁRIO UTILIZAR PROCV, SOMASE, CONT.SE, TABELA DINÂMICA OU MACROS."],
+
+        ["10. SALVE O ARQUIVO E ENVIE PARA CORREÇÃO."]
         ]
         pd.DataFrame(instrucoes).to_excel(writer, sheet_name='Instrucoes_Prova', index=False, header=False)
         
