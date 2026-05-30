@@ -152,7 +152,7 @@ def enviar_email(destinatario, assunto, corpo, arquivos=None):
         msg['To'] = destinatario
         msg['Subject'] = assunto
         msg.attach(MIMEText(corpo, 'plain'))
-        
+
         if arquivos:
             for arquivo_bytes, nome_arquivo in arquivos:
                 part = MIMEBase('application', 'octet-stream')
@@ -160,64 +160,54 @@ def enviar_email(destinatario, assunto, corpo, arquivos=None):
                 encoders.encode_base64(part)
                 part.add_header('Content-Disposition', f"attachment; filename={nome_arquivo}")
                 msg.attach(part)
-                
+
         server = smtplib.SMTP('smtp.gmail.com', 587)
         server.starttls()
         server.login(EMAIL_PROFESSOR, SENHA_APP_GOOGLE)
         server.send_message(msg)
         server.quit()
         return True
+
     except:
         return False
- 
+
+
 def gerar_prova_excel(nome_aluno):
     seed = int(hashlib.md5(nome_aluno.encode()).hexdigest(), 16) % 10000
     random.seed(seed)
-    
+
     itens = ["Notebook", "Mouse", "Teclado", "Monitor", "Impressora", "Cabo HDMI", "SSD 480GB"]
     categorias = ["Informática", "Periféricos", "Periféricos", "Informática", "Periféricos", "Acessórios", "Hardware"]
-    
+
     df_apoio = pd.DataFrame({
         "ID_Prod": range(1, 8),
         "Produto": itens,
         "Categoria": categorias,
         "Preço Base": [3500.0, 80.0, 150.0, 900.0, 600.0, 45.0, 280.0]
     })
-    
-dados = []
 
-for i in range(1, 31):
+    dados = []
 
-    qtd = random.randint(2, 20)
+    for i in range(1, 31):
 
-    preco = random.randint(50, 500)
+        qtd = random.randint(2, 20)
+        preco = random.randint(50, 500)
+        desconto = random.choice([5, 10, 15, 20])
 
-    desconto = random.choice([5, 10, 15, 20])
+        dados.append({
+            "Código": i,
+            "Quantidade": qtd,
+            "Preço Unitário": preco,
+            "Total Produto (Multiplicação)": "",
+            "Percentual Desconto (%)": desconto,
+            "Valor Desconto (Porcentagem)": "",
+            "Total Final (Subtração)": "",
+            "Rateio por 10 (Divisão)": "",
+            "Bônus (Referência Absoluta)": ""
+        })
 
-    dados.append({
-
-        "Código": i,
-
-        "Quantidade": qtd,
-
-        "Preço Unitário": preco,
-
-        "Total Produto (Multiplicação)": "",
-
-        "Percentual Desconto (%)": desconto,
-
-        "Valor Desconto (Porcentagem)": "",
-
-        "Total Final (Subtração)": "",
-
-        "Rateio por 10 (Divisão)": "",
-
-        "Bônus (Referência Absoluta)": ""
-
-    })
-        
     df = pd.DataFrame(dados)
-    
+
     df_resumo = pd.DataFrame({
         "Indicador": [
             "Total Geral (SOMA)",
@@ -237,39 +227,35 @@ for i in range(1, 31):
         "Parâmetro": ["Percentual Bônus"],
         "Valor": [0.05]
     })
-    
+
     output = io.BytesIO()
+
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         df.to_excel(writer, sheet_name='Base_de_Dados', index=False)
         df_resumo.to_excel(writer, sheet_name='Resumo_Gerencial', index=False)
         df_parametros.to_excel(writer, sheet_name='Parametros', index=False)
-        
+
         instrucoes = [
-
-        ["PROVA DE EXCEL BÁSICO"],
-
-        ["1. SOMA: Utilize a função SOMA para calcular os totais solicitados."],
-
-        ["2. SUBTRAÇÃO: Realize cálculos de diferença entre valores utilizando fórmulas."],
-
-        ["3. MULTIPLICAÇÃO: Calcule os valores totais multiplicando Quantidade por Preço Unitário."],
-
-        ["4. DIVISÃO: Realize os cálculos de divisão conforme solicitado nas colunas indicadas."],
-
-        ["5. PORCENTAGEM: Calcule descontos ou acréscimos utilizando percentuais."],
-
-        ["6. REFERÊNCIA RELATIVA: Utilize referências relativas nas fórmulas da planilha."],
-
-        ["7. REFERÊNCIA ABSOLUTA: Utilize referências absolutas ($) quando solicitado."],
-
-        ["8. GRÁFICO: Crie 1 gráfico utilizando os dados calculados na planilha."],
-
-        ["9. NÃO É NECESSÁRIO UTILIZAR PROCV, SOMASE, CONT.SE, TABELA DINÂMICA OU MACROS."],
-
-        ["10. SALVE O ARQUIVO E ENVIE PARA CORREÇÃO."]
+            ["PROVA DE EXCEL BÁSICO"],
+            ["1. SOMA: Utilize a função SOMA para calcular os totais solicitados."],
+            ["2. MULTIPLICAÇÃO: Calcule os valores totais multiplicando Quantidade por Preço Unitário."],
+            ["3. SUBTRAÇÃO: Realize cálculos de diferença entre valores."],
+            ["4. DIVISÃO: Realize os cálculos de divisão conforme solicitado."],
+            ["5. PORCENTAGEM: Calcule descontos utilizando percentuais."],
+            ["6. REFERÊNCIA RELATIVA: Utilize referências relativas nas fórmulas."],
+            ["7. REFERÊNCIA ABSOLUTA: Utilize a célula fixa $B$2 da aba Parametros."],
+            ["8. GRÁFICO: Crie 1 gráfico com os dados da planilha."],
+            ["9. NÃO UTILIZAR PROCV, SOMASE, CONT.SE, TABELA DINÂMICA OU MACROS."],
+            ["10. SALVE E ENVIE O ARQUIVO."]
         ]
-        pd.DataFrame(instrucoes).to_excel(writer, sheet_name='Instrucoes_Prova', index=False, header=False)
-        
+
+        pd.DataFrame(instrucoes).to_excel(
+            writer,
+            sheet_name='Instrucoes_Prova',
+            index=False,
+            header=False
+        )
+
     return output.getvalue()
  
 def calcular_nota(arquivo_bytes, nome_aluno):
