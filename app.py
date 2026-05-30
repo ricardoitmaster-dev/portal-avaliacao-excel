@@ -184,47 +184,65 @@ def gerar_prova_excel(nome_aluno):
         "Preço Base": [3500.0, 80.0, 150.0, 900.0, 600.0, 45.0, 280.0]
     })
     
-    dados = []
-    for i in range(1, 31):
-        id_prod = random.randint(1, 7)
-        qtd = random.randint(2, 15)
-        dados.append({
-            "Nº Pedido": i,
-            "Data Venda": "", 
-            "ID_Produto": id_prod,
-            "Produto (ProcV)": "",
-            "Quantidade": qtd,
-            "Preço Unitário (ProcV)": "",
-            "Subtotal (Multiplicação)": "",
-            "Taxa Desconto % (Divisão)": "",
-            "Valor Desconto R$ (Porcentagem)": "",
-            "Total Líquido (Subtração)": "",
-            "Status Meta (SE)": ""
-        })
+dados = []
+
+for i in range(1, 31):
+
+    qtd = random.randint(2, 20)
+
+    preco = random.randint(50, 500)
+
+    desconto = random.choice([5, 10, 15, 20])
+
+    dados.append({
+
+        "Código": i,
+
+        "Quantidade": qtd,
+
+        "Preço Unitário": preco,
+
+        "Total Produto (Multiplicação)": "",
+
+        "Percentual Desconto (%)": desconto,
+
+        "Valor Desconto (Porcentagem)": "",
+
+        "Total Final (Subtração)": "",
+
+        "Rateio por 10 (Divisão)": "",
+
+        "Bônus (Referência Absoluta)": ""
+
+    })
         
     df = pd.DataFrame(dados)
     
     df_resumo = pd.DataFrame({
-        "Indicador Analítico": [
-            "Faturamento Bruto Geral (SOMA)",
-            "Quantidade Média de Itens por Pedido",
-            "Faturamento Total da Categoria Informática (SOMASE)",
-            "Total de Pedidos Gerados para Informática (CONT.SE)"
+        "Indicador": [
+            "Total Geral (SOMA)",
+            "Maior Valor",
+            "Menor Valor",
+            "Média Geral"
         ],
-        "Fórmula a ser Aplicada": [
-            "Inserir a função SOMA na coluna ao lado",
-            "Inserir cálculo de Média ou Soma/Divisão",
-            "Inserir a função SOMASE baseada na tabela de apoio",
-            "Inserir a função CONT.SE filtrando por Informática"
-        ],
-        "Resultado do Aluno": ["", "", "", ""]
+        "Resultado do Aluno": [
+            "",
+            "",
+            "",
+            ""
+        ]
+    })
+
+    df_parametros = pd.DataFrame({
+        "Parâmetro": ["Percentual Bônus"],
+        "Valor": [0.05]
     })
     
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         df.to_excel(writer, sheet_name='Base_de_Dados', index=False)
-        df_apoio.to_excel(writer, sheet_name='Apoio_Matriz', index=False)
         df_resumo.to_excel(writer, sheet_name='Resumo_Gerencial', index=False)
+        df_parametros.to_excel(writer, sheet_name='Parametros', index=False)
         
         instrucoes = [
 
