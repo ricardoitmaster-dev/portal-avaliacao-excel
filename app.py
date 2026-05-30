@@ -227,20 +227,26 @@ def gerar_prova_excel(nome_aluno):
         df_resumo.to_excel(writer, sheet_name='Resumo_Gerencial', index=False)
         
         instrucoes = [
-            ["CRITÉRIOS E REQUISITOS OBRIGATÓRIOS DA PROVA:"],
-            ["1. DATAS COM ALEATORIOENTRE: Preencha a coluna 'Data Venda' utilizando =ALEATORIOENTRE() com números de série de datas deste ano."],
-            ["2. BUSCA COM PROCV: Preencha as colunas 'Produto' e 'Preço Unitário' buscando os dados da aba 'Apoio_Matriz' pelo ID."],
-            ["3. MULTIPLICAÇÃO: Calcule o 'Subtotal' multiplicando a Quantidade pelo Preço Unitário."],
-            ["4. DIVISÃO: Na 'Taxa Desconto %', defina um critério de divisão (ex: dividir a Quantidade por 100 para achar um percentual)."],
-            ["5. PORCENTAGEM: No 'Valor Desconto R$', calcule a porcentagem applying a taxa sobre o Subtotal."],
-            ["6. SUBTRAÇÃO: O 'Total Líquido' deve ser calculated subtraindo o Desconto do Subtotal."],
-            ["7. FUNÇÃO LÓGICA SE: No 'Status Meta', aplique a função SE (Se Total Líquido >= 1200 then 'META', caso contrário 'REVISAR')."],
-            ["8. SOMA, SOMASE e CONT.SE: Preencha os campos vazios da aba 'Resumo_Gerencial' utilizando estritamente essas funções."],
-            ["9. MACROS DE ORDENAÇÃO: Desenvolva 2 macros gravadas ou em VBA destinadas a ordenar os registros da base."],
-            ["10. BOTÕES OPERACIONAIS: Crie 2 botões na planilha e atribua cada um deles a uma macro de ordenação desenvolvida."],
-            ["11. COMPONENTES GRÁFICOS: Insira obrigatoriamente 2 gráficos dinâmicos ou estáticos que facilitem a leitura dos dados."],
-            ["12. TABELA DINÂMICA: Desenvolva 1 Tabela Dinâmica consolidando as informações em uma nova aba exclusiva."],
-            ["13. ENTREGA: Salve seu arquivo final impreterivelmente no formato .xlsm (Planilha Habilitada para Macro do Excel)."]
+
+        ["CRITÉRIOS E REQUISITOS OBRIGATÓRIOS DA PROVA DE EXCEL BÁSICO"],
+
+        ["1. MULTIPLICAÇÃO: Calcule o Total Produto multiplicando a Quantidade pelo Preço Unitário."],
+
+        ["2. DIVISÃO: Calcule o Rateio dividindo o Total Produto por 10."],
+
+        ["3. PORCENTAGEM: Calcule o Valor do Desconto aplicando o percentual informado."],
+
+        ["4. SUBTRAÇÃO: Calcule o Total Final descontando o Valor do Desconto."],
+
+        ["5. REFERÊNCIA RELATIVA: Utilize referências normais nas fórmulas da planilha."],
+
+        ["6. REFERÊNCIA ABSOLUTA: Utilize uma célula fixa para calcular o Bônus."],
+
+        ["7. SOMA: Calcule o Total Geral utilizando a função SOMA."],
+
+        ["8. INSIRA 1 GRÁFICO baseado nos valores calculados."],
+
+        ["9. SALVE E ENVIE O ARQUIVO FINAL PARA CORREÇÃO."]
         ]
         pd.DataFrame(instrucoes).to_excel(writer, sheet_name='Instrucoes_Prova', index=False, header=False)
         
