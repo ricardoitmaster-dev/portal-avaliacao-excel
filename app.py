@@ -33,7 +33,7 @@
 # ----------------------------------------------------------------------------
 # INÍCIO DA IMPORTAÇÃO DE MÓDULOS ESSENCIAIS
 import streamlit as st
-@@ -23,24 +34,24 @@
+
 from email.mime.base import MIMEBase
 from email import encoders
 from openpyxl import load_workbook
@@ -62,7 +62,6 @@ st.set_page_config(page_title="Portal de Avaliação Excel SENAI", layout="wide"
 # --- PROTOCOLO DE SEGURANÇA E BLOQUEIO DE INSPEÇÃO (F12 / CLIQUE DIREITO) ---
 st.markdown("""
     <style>
-@@ -67,7 +78,7 @@
         };
     </script>
 """, unsafe_allow_html=True)
@@ -71,7 +70,6 @@ st.markdown("""
 # --- ESTILIZAÇÃO CSS ---
 st.markdown(f"""
     <style>
-@@ -132,7 +143,7 @@
         }}
     </style>
 """, unsafe_allow_html=True)
@@ -80,7 +78,6 @@ st.markdown(f"""
 # --- FUNÇÕES DE APOIO ---
 def enviar_email(destinatario, assunto, corpo, arquivos=None):
     try:
-@@ -158,7 +169,7 @@
         return True
     except:
         return False
@@ -89,7 +86,7 @@ def enviar_email(destinatario, assunto, corpo, arquivos=None):
 def gerar_prova_excel(nome_aluno):
     seed = int(hashlib.md5(nome_aluno.encode()).hexdigest(), 16) % 10000
     random.seed(seed)
-@@ -221,7 +232,7 @@
+
             ["2. BUSCA COM PROCV: Preencha as colunas 'Produto' e 'Preço Unitário' buscando os dados da aba 'Apoio_Matriz' pelo ID."],
             ["3. MULTIPLICAÇÃO: Calcule o 'Subtotal' multiplicando a Quantidade pelo Preço Unitário."],
             ["4. DIVISÃO: Na 'Taxa Desconto %', defina um critério de divisão (ex: dividir a Quantidade por 100 para achar um percentual)."],
@@ -98,7 +95,7 @@ def gerar_prova_excel(nome_aluno):
             ["6. SUBTRAÇÃO: O 'Total Líquido' deve ser calculated subtraindo o Desconto do Subtotal."],
             ["7. FUNÇÃO LÓGICA SE: No 'Status Meta', aplique a função SE (Se Total Líquido >= 1200 then 'META', caso contrário 'REVISAR')."],
             ["8. SOMA, SOMASE e CONT.SE: Preencha os campos vazios da aba 'Resumo_Gerencial' utilizando estritamente essas funções."],
-@@ -234,7 +245,7 @@
+
         pd.DataFrame(instrucoes).to_excel(writer, sheet_name='Instrucoes_Prova', index=False, header=False)
 
     return output.getvalue()
@@ -107,7 +104,7 @@ def gerar_prova_excel(nome_aluno):
 def calcular_nota(arquivo_bytes, nome_aluno):
     try:
         df = pd.read_excel(arquivo_bytes, sheet_name='Base_de_Dados', engine='openpyxl')
-@@ -314,25 +325,25 @@
+
         detalhamento = f"Fórmulas/Matemática: {round(pontos_formulas, 1)}/40.0 | Macros/Botões: {pontos_macro}/20.0 | Gráficos: {pontos_graficos}/20.0 | Tabela Dinâmica: {pontos_dinamica}/20.0"
 
         if feedbacks:
@@ -137,7 +134,6 @@ with c3:
 # --- FLUXO DE EXECUÇÃO DE TELAS ---
 if st.session_state.perfil is None:
     st.markdown("<br>", unsafe_allow_html=True)
-@@ -356,7 +367,7 @@
             '<a href="https://guarulhos.sp.senai.br/" target="_self" class="btn-sair-link" style="margin-top: 0px;">❌ SAIR DO SISTEMA</a>',
             unsafe_allow_html=True
         )
@@ -146,7 +142,6 @@ if st.session_state.perfil is None:
 # --- PAINEL OPERACIONAL DO ESTUDANTE ---
 elif st.session_state.perfil == "aluno":
     if st.button("⬅️ Voltar"):
-@@ -384,47 +395,50 @@
         up = st.file_uploader("Upload da Prova Resolvida (.xlsm ou .xlsx)", type=['xlsx', 'xlsm'], accept_multiple_files=True)
 
         if st.button("Finalizar Entrega"):
@@ -236,7 +231,6 @@ elif st.session_state.perfil == "aluno":
 # --- PAINEL GESTOR / ADMINISTRATIVO (Sidebar Retornada) ---
 elif st.session_state.perfil == "admin":
     with st.sidebar:
-@@ -440,7 +454,7 @@
             "Selecione a área desejada:",
             ["📊 Notas", "📝 Professores", "🛡️ Área ADM"]
         )
@@ -245,7 +239,6 @@ elif st.session_state.perfil == "admin":
     st.subheader(opcao_admin)
 
     if opcao_admin == "📊 Notas":
-@@ -461,7 +475,7 @@
                     st.warning("Nenhum dado encontrado para esta turma ou credenciais inválidas.")
         else:
             st.info("Nenhum professor cadastrado no sistema ainda.")
@@ -254,7 +247,6 @@ elif st.session_state.perfil == "admin":
     elif opcao_admin == "📝 Professores":
         with st.form("c_p"):
             n_p = st.text_input("Nome")
-@@ -472,17 +486,17 @@
                     "professores.csv", mode='a', header=not os.path.exists("professores.csv"), index=False
                 )
                 st.success("Professor cadastrado com sucesso!")
